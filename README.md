@@ -8,8 +8,12 @@ WilmaTools is a browser-based collection of optional tools for Wilma. Current mo
 
 1. Install Tampermonkey.
 2. [Install WilmaTools.user.js](https://raw.githubusercontent.com/ljrant/WilmaTools/main/WilmaTools.user.js) (or paste the script into Tampermonkey).
-3. Open an authorized Wilma student gradebook at `https://espoo.inschool.fi/profiles/students/.../choices?view=gradebook`.
+3. Open an authorized Wilma student gradebook at `https://<school>.inschool.fi/profiles/students/.../choices?view=gradebook`.
 4. Click **WilmaTools**.
+
+The script supports **any school subdomain** under `https://*.inschool.fi` (for example, `espoo.inschool.fi`), on the student gradebook page. It does not automatically support other Wilma domains outside `inschool.fi`. The script fetches only same-origin student pages in your current school session; no cross-school requests are made.
+
+Käyttäjäskripti toimii **kaikilla `*.inschool.fi`-aliverkkotunnuksilla** opiskelijan suoritussivulla. Tietoja haetaan vain avoinna olevan koulun palvelimelta, ei muiden koulujen palvelimilta.
 
 ## Features / Ominaisuudet
 
