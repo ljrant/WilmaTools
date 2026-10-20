@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Desktop Sidebar
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.16.1
+// @version      0.16.2
 // @description  Finnish-first WilmaTools sidebar on every Wilma page
 // @match        https://*.inschool.fi/*
 // @grant        none
@@ -81,6 +81,8 @@ for(const a of tools){const item=label('div','');item.className='item';item.appe
 const setting=label('div','');setting.className='item';setting.append(label('strong',x('settings')));const select=document.createElement('select');for(const [code,name]of [['fi','Suomi'],['en','English']]){const op=label('option',name);op.value=code;select.append(op)}select.value=lang;select.onchange=()=>{lang=select.value;let s={};try{s=JSON.parse(localStorage.getItem(KEY)||'{}')}catch{}s.lang=lang;localStorage.setItem(KEY,JSON.stringify(s));window.dispatchEvent(new CustomEvent('wilmatools:language',{detail:lang}));draw()};setting.append(label('span',x('language')+' '),select);panel.append(setting,label('p',x('hint')));
 }
 btn.onclick=()=>{panel.hidden=!panel.hidden;if(!panel.hidden)draw()};
+window.addEventListener('wilmatools:open-templates',()=>{panel.hidden=false;templateEditor()});
+window.addEventListener('wilmatools:open-drafts',()=>{panel.hidden=false;draftSidebar()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')panel.hidden=true});
 
 
