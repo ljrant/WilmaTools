@@ -46,9 +46,9 @@ Huomiot-näkymässä voi valita yhden opiskelijan, muokata viestipohjaa ja kopio
 
 ## Student selector count / Opiskelijamäärä
 
-Wilma may omit the currently open student from the dropdown links. WilmaTools includes the **current gradebook's student** even if the dropdown only lists classmates. When the current student's name is unavailable in those links, the script asks for their name locally at collection time. This name is only held in the active browser tab. Verify that the total matches your group and that no student is duplicated before using the report.
+Wilma may omit the currently open student from the dropdown links. WilmaTools includes the **current gradebook's student** even if the dropdown only lists classmates. The script attempts to read the current student's name from Wilma's breadcrumb or student selector automatically. If the name cannot be read, it uses a generic current-student label rather than asking for the name. Verify that the total matches your group and that no student is duplicated before using the report.
 
-Wilman opiskelijavalikko ei välttämättä sisällä juuri avoinna olevan opiskelijan omaa linkkiä. WilmaTools lisää nykyisen opiskelijan mukaan. Tarvittaessa nimi kysytään paikallisesti tietoja kerättäessä. Tarkista ryhmän opiskelijamäärä ja mahdolliset kaksoiskappaleet ennen tulosten käyttöä.
+Wilman opiskelijavalikko ei välttämättä sisällä juuri avoinna olevan opiskelijan omaa linkkiä. WilmaTools lisää nykyisen opiskelijan mukaan. Nimi pyritään lukemaan suoraan Wilman sivun navigaatiosta. Jos nimi ei löydy, käytetään yleistä nykyisen opiskelijan merkintää ilman nimikyselyä. Tarkista ryhmän opiskelijamäärä ja mahdolliset kaksoiskappaleet ennen tulosten käyttöä.
 
 ## Features / Ominaisuudet
 
