@@ -46,14 +46,14 @@ msgbox.append(el('h3',mt('heading')),el('p',mt('info')));
 const subjectLabel=el('label',mt('subject')+' '),subjectInput=el('input');subjectInput.type='text';subjectInput.style.width='min(98%,450px)';subjectInput.value=state.messageSubject||mt('sampleSubject');subjectInput.oninput=()=>state.messageSubject=subjectInput.value;subjectLabel.append(subjectInput);msgbox.append(subjectLabel);
 const bodyLabel=el('label',mt('body')),bodyInput=el('textarea');bodyInput.rows=6;bodyInput.style.cssText='display:block;width:100%;margin:8px 0;white-space:pre-wrap';bodyInput.value=state.messageText||mt('sampleBody');bodyInput.oninput=()=>state.messageText=bodyInput.value;bodyLabel.append(bodyInput);msgbox.append(bodyLabel);
 const picks=el('div');picks.style.cssText='max-height:145px;overflow:auto;border:1px solid #ddd;padding:8px;margin:10px 0';
-for(const p of unique){const label=el('label');label.style.cssText='display:block;margin:4px';const cb=el('input');cb.type='checkbox';cb.checked=state.messageStudentIds.has(p.id);cb.onchange=()=>{cb.checked?state.messageStudentIds.add(p.id):state.messageStudentIds.delete(p.id)};label.append(cb,document.createTextNode(' '+p.name));picks.append(label)}msgbox.append(picks);
+for(const p of unique){const label=el('label');label.style.cssText='display:block;margin:4px';const cb=el('input');cb.type='radio';cb.name='wt-message-student';cb.checked=state.messageStudentIds.has(p.id);cb.onchange=()=>{state.messageStudentIds.clear();state.messageStudentIds.add(p.id)};label.append(cb,document.createTextNode(' '+p.name));picks.append(label)}msgbox.append(picks);
 const prepare=el('button',mt('prepare'));prepare.onclick=async()=>{
 const targets=unique.filter(x=>state.messageStudentIds.has(x.id));if(!targets.length){alert(mt('empty'));return}
-const first=targets[0],firstName=first.name.split(/\\s+/)[0];
+const first=targets[0],firstName=first.name.split(/\s+/)[0];
 const msg=bodyInput.value.replaceAll('{etunimi}',firstName).replaceAll('{name}',firstName);
-const draft=subjectInput.value+'\\n\\n'+msg;
+const draft=subjectInput.value+'\n\n'+msg;
 try{await navigator.clipboard.writeText(draft)}catch{prompt(mt('noClipboard'),draft);return}
-alert(mt('notice')+' '+mt('selected').replace('{n}',targets.length));
+alert(mt('notice'));
 window.open(location.origin+'/messages/compose','_blank','noopener');
 };msgbox.append(prepare);box.append(msgbox);
 const table=el('table');table.className='wt-issues';const h=el('tr');for(const v of ['student','course','grade','issue'])h.append(el('th',t(v)));table.append(h);flagged.sort((a,b)=>a.student.localeCompare(b.student,'fi')||a.name.localeCompare(b.name,'fi'));for(const r of flagged){const tr=el('tr');tr.append(el('td',r.student),el('td',r.name));const g=el('td',r.grade,'wt-grade'),[bg,fg]=color(r.grade,true);g.style.background=bg;g.style.color=fg;tr.append(g,el('td',t(flag(r.grade))));table.append(tr)}box.append(table);return}
