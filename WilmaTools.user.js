@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.18.2
+// @version      0.18.3
 // @description  Local Wilma homeroom gradebook overview, FI/EN
 // @match        https://*.inschool.fi/profiles/classes/*
 // @grant        none
@@ -93,7 +93,7 @@ function parse(html,s){const doc=new DOMParser().parseFromString(html,'text/html
 let root=null;const $=s=>root?.querySelector(s);const el=(tag,txt='',cls='')=>{const e=document.createElement(tag);e.textContent=txt;if(cls)e.className=cls;return e};
 const style=document.createElement('style');style.textContent=`#wt-launch{position:fixed;right:16px;bottom:16px;z-index:2147483600;background:#17466f;color:white;padding:11px 16px;border:0;border-radius:9px;font-weight:700;cursor:pointer}#wt-screen{position:relative;width:100%;min-height:520px;background:transparent;font:14px system-ui,Arial;color:#17212b}#wt-panel{position:relative;display:flex;flex-direction:column;overflow:hidden;min-height:520px;max-height:82vh;border:1px solid #d4e0e8;border-radius:12px;background:#fff}#wt-header,#wt-toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid #ddd}#wt-header{background:#eef4fa}#wt-header strong{margin-right:auto;font-size:17px}#wt-panel button,#wt-panel select,#wt-panel input{font:inherit;padding:6px;border:1px solid #b6c3d1;border-radius:5px}#wt-status,#wt-note{padding:6px 16px;color:#4d5c69;font-size:12px}#wt-content{flex:1;overflow:auto;padding:10px 16px}#wt-content table{border-collapse:separate;border-spacing:0;font-size:12px}#wt-content th,#wt-content td{border:1px solid #d7dde2;padding:6px 8px;text-align:center}#wt-content th{position:sticky;top:0;z-index:2;background:#eaf0f6}#wt-content th:first-child,#wt-content td:first-child{position:sticky;left:0;z-index:3;text-align:left;min-width:145px;background:#fff}#wt-content th:first-child{z-index:4;background:#eaf0f6}.wt-heading{width:144px;min-width:144px;max-width:144px;white-space:normal;overflow-wrap:anywhere;word-break:normal;vertical-align:bottom;line-height:1.25;height:auto;min-height:65px;cursor:pointer}.wt-grade{font-weight:bold;min-width:38px}#wt-hide-list{max-height:145px;overflow:auto;padding:10px 18px;border-bottom:1px solid #ddd}#wt-hide-list label{display:block;margin:3px 0}#wt-content .wt-issues td{text-align:left}#wt-content .wt-issues .wt-grade{text-align:center}`;document.head.append(style);
 try{localStorage.setItem('wilmatools.lastGradebook',location.pathname+location.search)}catch{}
-let assessmentHost=null,assessmentLoaded=false,originalContent=[];
+let assessmentHost=null,assessmentLoaded=false,originalContent=[],nativeContainer=null;
 function tabStrip(){return document.querySelector('ul.nav.nav-tabs.nav-tabs-primary')}
 function installAssessmentTab(){
  const tabs=tabStrip();
@@ -103,34 +103,39 @@ function installAssessmentTab(){
  link.href='#wt-assessment';link.style.cssText='display:block;padding:10px 14px;background:#e7f3ff;color:#155b91;font-weight:700;border:1px solid #9fc6e5;border-radius:6px 6px 0 0';
  link.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();activateAssessment()});
  item.append(link);
- const links=[...tabs.querySelectorAll('a')];
- const support=links.find(a=>/Tuen tilastot|Support statistics/i.test(a.textContent));
- if(support){const li=support.closest('li');const dropdown=li?.closest('li.dropdown');if(dropdown&&dropdown.parentElement===tabs)dropdown.after(item);else tabs.append(item)}
- else tabs.append(item);
- // Wilma's own tab navigation must restore native content.
- tabs.addEventListener('click',e=>{
-  if(e.target.closest('#wt-class-assessment-tab'))return;
-  restoreNativeContent();
- },true);
+ const support=[...tabs.querySelectorAll('a')].find(a=>/Tuen tilastot|Support statistics/i.test(a.textContent));
+ if(support){
+  const dropdown=support.closest('li.dropdown');
+  if(dropdown&&dropdown.parentElement===tabs)dropdown.after(item);else tabs.append(item);
+ }else tabs.append(item);
+ tabs.addEventListener('click',e=>{if(!e.target.closest('#wt-class-assessment-tab'))restoreNativeContent()},true);
 }
 function restoreNativeContent(){
  if(!assessmentHost)return;
  assessmentHost.hidden=true;
- for(const node of originalContent){node.style.display=node.dataset.wtPreviousDisplay||'';delete node.dataset.wtPreviousDisplay}
- const item=document.getElementById('wt-class-assessment-tab');item?.classList.remove('active');
+ for(const entry of originalContent){entry.node.style.display=entry.display}
+ document.getElementById('wt-class-assessment-tab')?.classList.remove('active');
 }
 function activateAssessment(){
  installAssessmentTab();
  const tabs=tabStrip();if(!tabs)return;
  if(!assessmentHost){
   assessmentHost=el('section');assessmentHost.id='wt-assessment-host';
-  assessmentHost.style.cssText='width:100%;margin:12px 0;min-height:460px';
-  // Insert at the start of Wilma's content area, not in an overlay.
-  const wrapper=tabs.parentElement;
-  wrapper.insertAdjacentElement('afterend',assessmentHost);
-  originalContent=[...wrapper.parentElement.children].filter(n=>n!==wrapper&&n!==assessmentHost&&n.tagName!=='SCRIPT'&&n.tagName!=='STYLE');
+  assessmentHost.style.cssText='width:100%;min-height:460px;background:#fff;border-top:1px solid #d7e1e9;padding:0 0 16px';
+  // Find Wilma's tab-content level, keeping the tab bar and its ancestors visible.
+  let container=tabs.parentElement;
+  for(let depth=0;depth<3&&container.parentElement;depth++){
+   const other=[...container.children].filter(n=>n.nodeType===1&&!n.contains(tabs)&&n!==tabs&&n.tagName!=='SCRIPT'&&n.tagName!=='STYLE');
+   if(other.length)break;
+   container=container.parentElement;
+  }
+  nativeContainer=container;
+  const barChild=[...container.children].find(n=>n===tabs||n.contains(tabs));
+  if(!barChild)return;
+  barChild.insertAdjacentElement('afterend',assessmentHost);
+  originalContent=[...container.children].filter(n=>n!==assessmentHost&&n!==barChild&&n.tagName!=='SCRIPT'&&n.tagName!=='STYLE').map(node=>({node,display:node.style.display}));
  }
- for(const node of originalContent){node.dataset.wtPreviousDisplay=node.style.display;node.style.display='none'}
+ for(const entry of originalContent)entry.node.style.display='none';
  assessmentHost.hidden=false;
  tabs.querySelectorAll('li.active').forEach(n=>n.classList.remove('active'));
  document.getElementById('wt-class-assessment-tab')?.classList.add('active');
