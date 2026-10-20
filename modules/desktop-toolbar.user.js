@@ -130,28 +130,17 @@ function improveHomeroomLayout(home,tools,last){
 function swapDashboardSections(){
  const groups=getSection('Ryhmät tässä jaksossa'),alerts=getSection('Ilmoitukset');
  if(!groups||!alerts||groups===alerts)return;
- // Move complete dashboard blocks rather than headings or individual items.
- function block(el){
-  let node=el;
-  for(let depth=0;depth<5&&node.parentElement;depth++){
-   const parent=node.parentElement;
-   if(parent===document.body)break;
-   const titles=[...parent.querySelectorAll('h1,h2,h3,h4,h5,h6')].map(x=>txt(x.textContent));
-   if(titles.includes('Ryhmät tässä jaksossa')&&titles.includes('Ilmoitukset'))break;
-   node=parent;
-  }return node;
- }
- let a=block(groups),b=block(alerts);
- // Find sibling-level wrappers; avoid moving nested main containers.
- while(a.parentElement&&b.parentElement&&a.parentElement!==b.parentElement){
-   if(a.parentElement.contains(b))break;
-   if(b.parentElement.contains(a))break;
-   if(a.parentElement.parentElement&&a.parentElement!==document.body)a=a.parentElement;
-   if(b.parentElement.parentElement&&b.parentElement!==document.body)b=b.parentElement;
- }
- if(a===b||a.contains(b)||b.contains(a)||!a.parentElement||a.parentElement!==b.parentElement)return;
- if(a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_PRECEDING){
-  b.before(a);
+ const hasTitle=(node,title)=>[...node.querySelectorAll('h1,h2,h3,h4,h5,h6')].some(h=>txt(h.textContent)===title);
+ // Only reorder separately wrapped dashboard blocks sharing a parent.
+ for(let g=groups;g&&g!==document.body;g=g.parentElement){
+  if(!hasTitle(g,'Ryhmät tässä jaksossa')||hasTitle(g,'Ilmoitukset'))continue;
+  for(let a=alerts;a&&a!==document.body;a=a.parentElement){
+   if(!hasTitle(a,'Ilmoitukset')||hasTitle(a,'Ryhmät tässä jaksossa'))continue;
+   if(a.parentElement&&a.parentElement===g.parentElement){
+    if(g.compareDocumentPosition(a)&Node.DOCUMENT_POSITION_PRECEDING)a.before(g);
+    return;
+   }
+  }
  }
 }
 function attachHome(){
