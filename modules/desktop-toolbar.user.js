@@ -114,7 +114,7 @@ function attachHome(){
   messages.append(makeAction(lang==='fi'?'Viesti opiskelijoille ja huoltajille':'Message students and guardians',()=>groupMessage(url,'both')));
   tools.append(messages);home.append(tools);
  }
- if(!period||period.querySelector('#wt-course-links'))return;
+ if(!period||period.dataset.wtCourseLinks==='yes')return;
  const courses=new Map();
  for(const a of period.querySelectorAll('a[href]')){
   const href=safePath(a);
@@ -123,6 +123,7 @@ function attachHome(){
   courses.set(href,{name,href,anchor:a});
  }
  if(!courses.size)return;
+ period.dataset.wtCourseLinks='yes';
  const wrap=document.createElement('div');wrap.id='wt-course-links';wrap.style.cssText='border-top:1px solid #dfe8ee;padding-top:8px;margin-top:8px;font:13px/1.5 system-ui';
  for(const group of courses.values()){
   const row=document.createElement('div');row.style.cssText='padding:5px 0;border-bottom:1px solid #edf1f5';
