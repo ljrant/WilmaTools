@@ -1,15 +1,15 @@
 // ==UserScript==
 // @name         WilmaTools
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.17.0
+// @version      0.18.0
 // @description  Local Wilma homeroom gradebook overview, FI/EN
-// @match        https://*.inschool.fi/profiles/students/*/choices*
+// @match        https://*.inschool.fi/profiles/classes/*
 // @grant        none
 // @run-at       document-idle
 // ==/UserScript==
 (() => {
 'use strict';
-if(window.__wilmatools04)return;window.__wilmatools04=true;
+if(!/^\/profiles\/classes\/\d+\/?$/.test(location.pathname)||window.__wilmatools04)return;window.__wilmatools04=true;
 const T={fi:{launch:'WilmaTools',title:'WilmaTools – Ryhmänohjaajan opintoseuranta',collect:'Kerää ryhmän tiedot',stop:'Pysäytä',close:'Sulje',matrix:'Opintojaksot',issues:'Huomiot',settings:'Asetukset',language:'Kieli',enabled:'Opintoseuranta käytössä',school:'Lukuvuosi',custom:'Oma aikaväli',all:'Kaikki päivämäärät',from:'Alkaen',to:'Päättyen',search:'Hae opiskelijaa tai opintojaksoa',hide:'Piilota opintojaksoja',export:'Vie CSV',student:'Opiskelija',course:'Opintojakso',grade:'Arvosana',issue:'Huomio',critical:'Vakava',low:'Alle 7',ready:'Opiskelijalinkkejä löytyi: {n}. Varmista, että ryhmä on oikea.',confirm:'Kerätäänkö {n} opiskelijan suoritukset? Tiedot pysyvät selaimessa.',reading:'Haetaan {i}/{n}…',finished:'Valmis: {n} suoritusta, {e} varoitusta. Vertaa tuloksia Wilman laajennettuun näkymään.',none:'Ei tietoja valitulla aikavälillä.',missing:'Ei merkintää',dateNote:'Päivämäärättömät suoritukset näkyvät vain Kaikki päivämäärät -valinnalla.',warning:'Huom. Näytä kaikki saattaa lisätä rivejä JavaScriptillä. Tarkista kattavuus ennen käyttöä.',found:'{n} opiskelijaa, {c} opintojaksoa, {r} suoritusta.',hideNote:'Poista valinta piilottaaksesi opintojakson.',settingsHelp:'Asetukset tallentuvat tähän selaimeen.'},
 en:{launch:'WilmaTools',title:'WilmaTools – Homeroom course progress',collect:'Collect class',stop:'Stop',close:'Close',matrix:'Course matrix',issues:'Students with issues',settings:'Settings',language:'Language',enabled:'Enable progress module',school:'School year',custom:'Custom dates',all:'All dates',from:'From',to:'To',search:'Search student or course',hide:'Hide courses',export:'Export CSV',student:'Student',course:'Course',grade:'Grade',issue:'Issue',critical:'Critical',low:'Below 7',ready:'Found {n} student links. Verify the class.',confirm:'Collect records for {n} students? Data remains in your browser.',reading:'Reading {i}/{n}…',finished:'Finished: {n} records, {e} warnings. Compare with the expanded Wilma page.',none:'No records in this period.',missing:'No record',dateNote:'Undated records appear only under All dates.',warning:'Note: Show all may dynamically load extra rows. Verify completeness before using.',found:'{n} students, {c} courses, {r} records.',hideNote:'Uncheck to hide a course.',settingsHelp:'Settings are saved in this browser.'}};
 const t=(k,v={})=>(T[cfg.lang][k]||k).replace(/\{(\w+)\}/g,(_,x)=>v[x]??'');
@@ -48,41 +48,27 @@ function currentStudentName(){
   return '';
 }
 async function discoverHomeroom(){
+ const groupUrl=location.origin+location.pathname;
+ const docs=[document];
  try{
-  const homeRes=await fetch(location.origin+'/',{credentials:'same-origin',cache:'no-store',redirect:'follow'});
-  if(!homeRes.ok||new URL(homeRes.url).origin!==location.origin||new URL(homeRes.url).pathname!=='/')return null;
-  const home=new DOMParser().parseFromString(await homeRes.text(),'text/html');
-  const heading=[...home.querySelectorAll('h1,h2,h3,h4,h5,h6')].find(h=>/^Ohjausryhmäsi$/i.test(tidy(h.textContent)));
-  if(!heading)return null;
-  let classLink=null;
-  for(let node=heading.parentElement,depth=0;node&&depth<5;node=node.parentElement,depth++){
-   const headings=[...node.querySelectorAll('h1,h2,h3,h4,h5,h6')];
-   if(headings.some(h=>h!==heading&&/^Ryhmät tässä jaksossa$|^Ilmoitukset$/i.test(tidy(h.textContent))))break;
-   classLink=[...node.querySelectorAll('a[href]')].find(a=>{try{const u=new URL(a.getAttribute('href'),location.origin);return u.origin===location.origin&&/^\/profiles\/classes\/\d+\/?$/.test(u.pathname)}catch{return false}});
-   if(classLink)break;
-  }
-  if(!classLink)return null;
-  const groupUrl=new URL(classLink.getAttribute('href'),location.origin);
-  const response=await fetch(groupUrl.href,{credentials:'same-origin',cache:'no-store',redirect:'follow'});
-  if(!response.ok||new URL(response.url).origin!==location.origin||new URL(response.url).pathname!==groupUrl.pathname)return null;
-  const doc=new DOMParser().parseFromString(await response.text(),'text/html');
+  const response=await fetch(groupUrl,{credentials:'same-origin',cache:'no-store'});
+  if(response.ok&&new URL(response.url).origin===location.origin&&new URL(response.url).pathname===location.pathname)docs.push(new DOMParser().parseFromString(await response.text(),'text/html'));
+ }catch{}
+ for(const doc of docs){
   const students=new Map();
   for(const a of doc.querySelectorAll('a[href]')){
    try{
-    const u=new URL(a.getAttribute('href'),location.origin);
+    const u=new URL(a.getAttribute('href'),groupUrl);
     const m=u.origin===location.origin&&u.pathname.match(/^\/profiles\/students\/(\d+)(?:\/|$)/);
     const name=tidy(a.textContent);
     if(m&&name&&name.length<120&&!students.has(m[1]))students.set(m[1],{id:m[1],name,url:location.origin+'/profiles/students/'+m[1]+'/choices?view=gradebook'});
    }catch{}
   }
-  return students.size?{people:[...students.values()],source:'homeroom'}:null;
- }catch(e){console.warn('[WilmaTools] Homeroom lookup unavailable; using student dropdown.');return null}
+  if(students.size)return {people:[...students.values()],source:'homeroom'};
+ }
+ return {people:[],source:'homeroom'};
 }
-async function getPeople(){
- const homeroom=await discoverHomeroom();
- if(homeroom)return homeroom;
- return {people:discover(),source:'dropdown'};
-}
+async function getPeople(){return discoverHomeroom()}
 function discover(){
 const lists=[...document.querySelectorAll('li')].map(li=>[...li.querySelectorAll('a[href]')].map(a=>{
 try{const u=new URL(a.getAttribute('href'),location.href),m=u.origin===location.origin&&u.pathname.match(p);
@@ -105,14 +91,37 @@ return [...people.values()];
 }
 function parse(html,s){const doc=new DOMParser().parseFromString(html,'text/html');const table=[...doc.querySelectorAll('table')].find(a=>{const h=tidy([...a.querySelectorAll('th')].map(x=>x.textContent).join(' ')).toLowerCase();return h.includes('arvosana')&&(h.includes('ects')||h.includes('laajuus'))});if(!table)throw Error('Gradebook table not found');let group='',subject='',rows=[];for(const tr of table.querySelectorAll('tr')){const level=[...tr.classList].find(x=>/^level\d+$/.test(x)),c=[...tr.children].filter(x=>x.matches('td,th'));if(!level||c.length<3)continue;const name=tidy(c[0].textContent);if(!name)continue;if(level==='level1'){group=name;subject='';continue}if(level==='level2'){subject=name;continue}if(level!=='level3')continue;rows.push({id:s.id,student:s.name,name,group,subject,key:[group,subject,name].join('\u001f'),grade:tidy(c[1].textContent),ects:tidy(c[2].textContent),date:isoDate(c[3]?.textContent),teacher:tidy(c[4]?.textContent)})}return rows}
 let root=null;const $=s=>root?.querySelector(s);const el=(tag,txt='',cls='')=>{const e=document.createElement(tag);e.textContent=txt;if(cls)e.className=cls;return e};
-const style=document.createElement('style');style.textContent=`#wt-launch{position:fixed;right:16px;bottom:16px;z-index:2147483600;background:#17466f;color:white;padding:11px 16px;border:0;border-radius:9px;font-weight:700;cursor:pointer}#wt-screen{position:fixed;inset:0;z-index:2147483601;background:#0009;font:14px system-ui,Arial;color:#17212b}#wt-panel{position:absolute;inset:3%;display:flex;flex-direction:column;overflow:hidden;border-radius:12px;background:#fff}#wt-header,#wt-toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid #ddd}#wt-header{background:#eef4fa}#wt-header strong{margin-right:auto;font-size:17px}#wt-panel button,#wt-panel select,#wt-panel input{font:inherit;padding:6px;border:1px solid #b6c3d1;border-radius:5px}#wt-status,#wt-note{padding:6px 16px;color:#4d5c69;font-size:12px}#wt-content{flex:1;overflow:auto;padding:10px 16px}#wt-content table{border-collapse:separate;border-spacing:0;font-size:12px}#wt-content th,#wt-content td{border:1px solid #d7dde2;padding:6px 8px;text-align:center}#wt-content th{position:sticky;top:0;z-index:2;background:#eaf0f6}#wt-content th:first-child,#wt-content td:first-child{position:sticky;left:0;z-index:3;text-align:left;min-width:145px;background:#fff}#wt-content th:first-child{z-index:4;background:#eaf0f6}.wt-heading{width:144px;min-width:144px;max-width:144px;white-space:normal;overflow-wrap:anywhere;word-break:normal;vertical-align:bottom;line-height:1.25;height:auto;min-height:65px;cursor:pointer}.wt-grade{font-weight:bold;min-width:38px}#wt-hide-list{max-height:145px;overflow:auto;padding:10px 18px;border-bottom:1px solid #ddd}#wt-hide-list label{display:block;margin:3px 0}#wt-content .wt-issues td{text-align:left}#wt-content .wt-issues .wt-grade{text-align:center}`;document.head.append(style);
+const style=document.createElement('style');style.textContent=`#wt-launch{position:fixed;right:16px;bottom:16px;z-index:2147483600;background:#17466f;color:white;padding:11px 16px;border:0;border-radius:9px;font-weight:700;cursor:pointer}#wt-screen{position:relative;width:100%;min-height:520px;background:transparent;font:14px system-ui,Arial;color:#17212b}#wt-panel{position:relative;display:flex;flex-direction:column;overflow:hidden;min-height:520px;max-height:82vh;border:1px solid #d4e0e8;border-radius:12px;background:#fff}#wt-header,#wt-toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid #ddd}#wt-header{background:#eef4fa}#wt-header strong{margin-right:auto;font-size:17px}#wt-panel button,#wt-panel select,#wt-panel input{font:inherit;padding:6px;border:1px solid #b6c3d1;border-radius:5px}#wt-status,#wt-note{padding:6px 16px;color:#4d5c69;font-size:12px}#wt-content{flex:1;overflow:auto;padding:10px 16px}#wt-content table{border-collapse:separate;border-spacing:0;font-size:12px}#wt-content th,#wt-content td{border:1px solid #d7dde2;padding:6px 8px;text-align:center}#wt-content th{position:sticky;top:0;z-index:2;background:#eaf0f6}#wt-content th:first-child,#wt-content td:first-child{position:sticky;left:0;z-index:3;text-align:left;min-width:145px;background:#fff}#wt-content th:first-child{z-index:4;background:#eaf0f6}.wt-heading{width:144px;min-width:144px;max-width:144px;white-space:normal;overflow-wrap:anywhere;word-break:normal;vertical-align:bottom;line-height:1.25;height:auto;min-height:65px;cursor:pointer}.wt-grade{font-weight:bold;min-width:38px}#wt-hide-list{max-height:145px;overflow:auto;padding:10px 18px;border-bottom:1px solid #ddd}#wt-hide-list label{display:block;margin:3px 0}#wt-content .wt-issues td{text-align:left}#wt-content .wt-issues .wt-grade{text-align:center}`;document.head.append(style);
 try{localStorage.setItem('wilmatools.lastGradebook',location.pathname+location.search)}catch{}
-const launch=el('button','WilmaTools');launch.id='wt-launch';document.body.append(launch);launch.onclick=()=>{if(!root)open()};
-window.addEventListener('wilmatools:open-progress',()=>{if(!root)open()});
-if(new URLSearchParams(location.search).get('wt')==='open')setTimeout(()=>{if(!root)open()},350);
-if(window.__wilmaToolsHub)launch.style.display='none';
+function installAssessmentTab(){
+ if(document.getElementById('wt-class-assessment-tab'))return;
+ const tabs=document.querySelector('ul.nav-tabs,.nav-tabs,[role="tablist"]');
+ if(!tabs)return;
+ const item=document.createElement('li');item.id='wt-class-assessment-tab';
+ const link=el('a',cfg.lang==='fi'?'WilmaTools · Arviointinäkymä':'WilmaTools · Grade overview');
+ link.href='#wt-assessment';link.style.cssText='display:block;padding:11px 14px;background:#e3f2ff;color:#155c94;font-weight:700;border:1px solid #8cbadd;border-radius:6px 6px 0 0';
+ link.onclick=e=>{e.preventDefault();activateAssessment()};
+ item.append(link);tabs.append(item);
+}
+let assessmentHost=null,assessmentLoaded=false;
+function activateAssessment(){
+ installAssessmentTab();
+ if(!assessmentHost){
+  assessmentHost=el('section');assessmentHost.id='wt-assessment-host';
+  assessmentHost.style.cssText='margin:15px 0;min-height:400px;width:100%';
+  const tabs=document.querySelector('ul.nav-tabs,.nav-tabs,[role="tablist"]');
+  (tabs?.parentElement||document.body).insertAdjacentElement('afterend',assessmentHost);
+ }
+ const visible=assessmentHost.hidden;
+ if(root&&visible){assessmentHost.hidden=false;return}
+ assessmentHost.hidden=false;
+ if(!root)open();
+ if(!assessmentLoaded){assessmentLoaded=true;collect()}
+}
+installAssessmentTab();
+let tabTries=0;const tabTimer=setInterval(()=>{installAssessmentTab();if(++tabTries>=12)clearInterval(tabTimer)},700);
 function status(x){if($('#wt-status'))$('#wt-status').textContent=x}
-function open(){state.people=discover();root=el('div');root.id='wt-screen';root.innerHTML=`<div id="wt-panel" role="dialog" aria-modal="true"><div id="wt-header"><strong id="wt-title"></strong><button id="wt-collect"></button><button id="wt-stop"></button><button id="wt-matrix"></button><button id="wt-issues"></button><button id="wt-settings"></button><button id="wt-close"></button></div><div id="wt-toolbar"><label><select id="wt-period"><option value="school"></option><option value="custom"></option><option value="all"></option></select></label><label id="wt-year-label"><select id="wt-year"></select></label><label id="wt-from-label" hidden><span id="wt-from-caption"></span> <input id="wt-from" type="date"></label><label id="wt-to-label" hidden><span id="wt-to-caption"></span> <input id="wt-to" type="date"></label><input id="wt-search" type="search"><button id="wt-hide"></button><button id="wt-export"></button></div><div id="wt-settingsbox" hidden style="padding:10px 16px"><label id="wt-lang-label"></label> <select id="wt-lang"><option value="fi">Suomi</option><option value="en">English</option></select> <label><input id="wt-enabled" type="checkbox"> <span id="wt-enabled-label"></span></label></div><div id="wt-hide-list" hidden></div><div id="wt-status"></div><div id="wt-note"></div><div id="wt-content"></div></div>`;document.body.append(root);for(let y=sy()-7;y<=sy()+2;y++){const op=el('option',y+'–'+(y+1));op.value=y;$('#wt-year').append(op)}$('#wt-year').value=state.year;$('#wt-period').value=state.period;$('#wt-lang').value=cfg.lang;$('#wt-enabled').checked=cfg.enabled;$('#wt-search').value=state.term;$('#wt-from').value=state.from;$('#wt-to').value=state.to;$('#wt-close').onclick=()=>{state.stop=true;root.remove();root=null};$('#wt-collect').onclick=collect;$('#wt-stop').onclick=()=>{state.stop=true};$('#wt-matrix').onclick=()=>{state.mode='matrix';render()};$('#wt-issues').onclick=()=>{state.mode='issues';render()};$('#wt-settings').onclick=()=>{$('#wt-settingsbox').hidden=!$('#wt-settingsbox').hidden};$('#wt-hide').onclick=()=>{$('#wt-hide-list').hidden=!$('#wt-hide-list').hidden};$('#wt-lang').onchange=e=>{cfg.lang=e.target.value;save();translate();render()};$('#wt-enabled').onchange=e=>{cfg.enabled=e.target.checked;save();translate();render()};$('#wt-period').onchange=e=>{state.period=e.target.value;dateUI();render()};$('#wt-year').onchange=e=>{state.year=+e.target.value;render()};$('#wt-from').onchange=e=>{state.from=e.target.value;render()};$('#wt-to').onchange=e=>{state.to=e.target.value;render()};$('#wt-search').oninput=e=>{state.term=e.target.value;render()};$('#wt-export').onclick=download;translate();status(t('ready',{n:state.people.length}));render();getPeople().then(result=>{if(!root||state.busy)return;state.people=result.people;state.source=result.source;status((cfg.lang==='fi'?(result.source==='homeroom'?'Ohjausryhmän sivulta':'Opiskelijavalikosta'):(result.source==='homeroom'?'Homeroom page':'Student dropdown'))+': '+result.people.length+' '+(cfg.lang==='fi'?'opiskelijaa':'students'))})}
+function open(){state.people=[];root=el('div');root.id='wt-screen';root.innerHTML=`<div id="wt-panel" role="dialog" aria-modal="true"><div id="wt-header"><strong id="wt-title"></strong><button id="wt-collect"></button><button id="wt-stop"></button><button id="wt-matrix"></button><button id="wt-issues"></button><button id="wt-settings"></button><button id="wt-close"></button></div><div id="wt-toolbar"><label><select id="wt-period"><option value="school"></option><option value="custom"></option><option value="all"></option></select></label><label id="wt-year-label"><select id="wt-year"></select></label><label id="wt-from-label" hidden><span id="wt-from-caption"></span> <input id="wt-from" type="date"></label><label id="wt-to-label" hidden><span id="wt-to-caption"></span> <input id="wt-to" type="date"></label><input id="wt-search" type="search"><button id="wt-hide"></button><button id="wt-export"></button></div><div id="wt-settingsbox" hidden style="padding:10px 16px"><label id="wt-lang-label"></label> <select id="wt-lang"><option value="fi">Suomi</option><option value="en">English</option></select> <label><input id="wt-enabled" type="checkbox"> <span id="wt-enabled-label"></span></label></div><div id="wt-hide-list" hidden></div><div id="wt-status"></div><div id="wt-note"></div><div id="wt-content"></div></div>`;assessmentHost.append(root);for(let y=sy()-7;y<=sy()+2;y++){const op=el('option',y+'–'+(y+1));op.value=y;$('#wt-year').append(op)}$('#wt-year').value=state.year;$('#wt-period').value=state.period;$('#wt-lang').value=cfg.lang;$('#wt-enabled').checked=cfg.enabled;$('#wt-search').value=state.term;$('#wt-from').value=state.from;$('#wt-to').value=state.to;$('#wt-close').onclick=()=>{assessmentHost.hidden=true};$('#wt-collect').onclick=collect;$('#wt-stop').onclick=()=>{state.stop=true};$('#wt-matrix').onclick=()=>{state.mode='matrix';render()};$('#wt-issues').onclick=()=>{state.mode='issues';render()};$('#wt-settings').onclick=()=>{$('#wt-settingsbox').hidden=!$('#wt-settingsbox').hidden};$('#wt-hide').onclick=()=>{$('#wt-hide-list').hidden=!$('#wt-hide-list').hidden};$('#wt-lang').onchange=e=>{cfg.lang=e.target.value;save();translate();render()};$('#wt-enabled').onchange=e=>{cfg.enabled=e.target.checked;save();translate();render()};$('#wt-period').onchange=e=>{state.period=e.target.value;dateUI();render()};$('#wt-year').onchange=e=>{state.year=+e.target.value;render()};$('#wt-from').onchange=e=>{state.from=e.target.value;render()};$('#wt-to').onchange=e=>{state.to=e.target.value;render()};$('#wt-search').oninput=e=>{state.term=e.target.value;render()};$('#wt-export').onclick=download;translate();status(cfg.lang==='fi'?'Valmis hakemaan ryhmän tiedot.':'Ready to load group data.');render()}
 function translate(){$('#wt-title').textContent=t('title');for(const [id,key] of [['collect','collect'],['stop','stop'],['matrix','matrix'],['issues','issues'],['settings','settings'],['close','close'],['hide','hide'],['export','export']])$('#wt-'+id).textContent=t(key);for(const [i,k] of [['school','school'],['custom','custom'],['all','all']])$('#wt-period').querySelector('[value="'+i+'"]').textContent=t(k);$('#wt-lang-label').textContent=t('language');$('#wt-enabled-label').textContent=t('enabled');$('#wt-search').placeholder=t('search');$('#wt-from-caption').textContent=t('from');$('#wt-to-caption').textContent=t('to');$('#wt-note').textContent=t('warning')+' '+t('dateNote');dateUI()}
 function dateUI(){$('#wt-year-label').hidden=state.period!=='school';$('#wt-from-label').hidden=state.period!=='custom';$('#wt-to-label').hidden=state.period!=='custom'}
 function selected(){let a=state.rows.filter(r=>!cfg.hidden.has(r.key));if(state.period==='school')a=a.filter(r=>r.date&&r.date>=state.year+'-08-01'&&r.date<=(state.year+1)+'-07-31');if(state.period==='custom')a=a.filter(r=>r.date&&state.from&&state.to&&state.from<=state.to&&r.date>=state.from&&r.date<=state.to);if(state.term.trim()){let q=state.term.toLocaleLowerCase('fi');a=a.filter(r=>[r.student,r.name,r.group,r.subject].some(x=>x.toLocaleLowerCase('fi').includes(q)))}return a}
@@ -173,34 +182,40 @@ const cols=[...new Map(rows.map(r=>[r.key,r.name])).entries()].sort((a,b)=>a[1].
 async function collect(){
  if(state.busy)return;
  state.busy=true;state.stop=false;state.errors=[];state.rows=[];
- status(cfg.lang==='fi'?'Haetaan ohjausryhmän opiskelijalistaa…':'Finding homeroom students…');
+ status(cfg.lang==='fi'?'Haetaan ryhmän opiskelijalistaa…':'Finding group students…');
  const lookup=await getPeople();
  if(!root){state.busy=false;return}
  state.people=lookup.people;state.source=lookup.source;
- if(!state.people.length){state.busy=false;status(t('none'));render();return}
- if(!confirm(t('confirm',{n:state.people.length})+'\n'+(cfg.lang==='fi'?'Lähde: ':'Source: ')+(lookup.source==='homeroom'?(cfg.lang==='fi'?'ohjausryhmän sivu':'homeroom page'):(cfg.lang==='fi'?'opiskelijavalikko (varamenetelmä)':'student dropdown (fallback)')))){state.busy=false;render();return}
- let completed=0,failed=0,empty=0;
+ if(!state.people.length){state.busy=false;status(cfg.lang==='fi'?'Ryhmäsivulta ei löytynyt opiskelijalinkkejä.':'No student links found on this group page.');render();return}
+ let next=0,completed=0,failed=0,empty=0,processed=0;
+ const count=state.people.length;
+ status((cfg.lang==='fi'?'Haetaan opiskelijoiden suorituksia: ':'Loading students: ')+'0/'+count);
  render();
- for(let i=0;i<state.people.length;i++){
-  if(state.stop||!root)break;
-  const student=state.people[i];status(t('reading',{i:i+1,n:state.people.length}));
-  try{
-   const res=await fetch(student.url,{credentials:'same-origin',redirect:'follow',cache:'no-store'});
-   if(!res.ok||new URL(res.url).origin!==location.origin||!p.test(new URL(res.url).pathname))throw Error('Unexpected HTTP response');
-   const data=parse(await res.text(),student);
-   if(!data.length){empty++;state.errors.push('Student '+(i+1)+': 0 courses')}
-   else completed++;
-   state.rows.push(...data);
-  }catch(e){failed++;state.errors.push('Student '+(i+1)+': '+e.message)}
-  render();
-  if(i<state.people.length-1&&!state.stop)await new Promise(r=>setTimeout(r,650));
- }
+ const worker=async()=>{
+  while(!state.stop&&root){
+   const i=next++;
+   if(i>=count)break;
+   const student=state.people[i];
+   try{
+    const res=await fetch(student.url,{credentials:'same-origin',redirect:'follow',cache:'no-store'});
+    const finalUrl=new URL(res.url);
+    if(!res.ok||finalUrl.origin!==location.origin||!p.test(finalUrl.pathname))throw Error('Unexpected HTTP response');
+    const data=parse(await res.text(),student);
+    if(!data.length){empty++;state.errors.push('Student '+(i+1)+': 0 courses')}
+    else completed++;
+    state.rows.push(...data);
+   }catch(e){failed++;state.errors.push('Student '+(i+1)+': '+e.message)}
+   processed++;
+   status((cfg.lang==='fi'?'Käsitelty ':'Processed ')+processed+'/'+count);
+   render();
+  }
+ };
+ await Promise.all(Array.from({length:Math.min(5,count)},()=>worker()));
  state.busy=false;
  if(root){
-  const message=cfg.lang==='fi'?
-   'Lähde: '+(state.source==='homeroom'?'ohjausryhmän sivu':'opiskelijavalikko (varamenetelmä)')+'. Opiskelijoita '+state.people.length+', suoritustietoja löytyi '+completed+', tyhjiä '+empty+', epäonnistui '+failed+'. Suoritusrivejä '+state.rows.length+'.':
-   'Source: '+(state.source==='homeroom'?'homeroom page':'student dropdown (fallback)')+'. Students '+state.people.length+', with grades '+completed+', empty '+empty+', failed '+failed+'. Rows '+state.rows.length+'.';
-  status(message+(state.stop?' ('+t('stop')+')':''));
+  status(cfg.lang==='fi'?
+   'Ryhmän opiskelijoita '+count+', suorituksia löytyi '+completed+', tyhjiä '+empty+', epäonnistui '+failed+', rivejä '+state.rows.length+'.':
+   'Students '+count+', with grades '+completed+', empty '+empty+', failed '+failed+', rows '+state.rows.length+'.');
   render();
  }
 }
