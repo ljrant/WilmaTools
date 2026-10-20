@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Desktop Sidebar
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.17.1
+// @version      0.17.2
 // @description  Finnish-first WilmaTools sidebar on every Wilma page
 // @match        https://*.inschool.fi/*
 // @grant        none
@@ -16,7 +16,7 @@ const t={fi:{tools:'Työkalut',progress:'Ryhmänohjaajan arviointinäkymä',auto
 let lang='fi';try{lang=JSON.parse(localStorage.getItem(KEY)||'{}').lang==='en'?'en':'fi'}catch{}
 const x=k=>t[lang][k],grade=/^\/profiles\/students\/\d+\/choices\/?$/;
 const css=document.createElement('style');css.textContent=`
-#wt-side-toggle{position:fixed;right:0;top:35%;z-index:2147483500;padding:13px 9px;border:0;border-radius:9px 0 0 9px;background:#184b75;color:white;font:600 13px system-ui;box-shadow:0 3px 12px #0003;cursor:pointer}
+#wt-side-toggle{position:fixed;right:18px;top:106px;z-index:2147483500;padding:5px 12px;border:1px solid #ffffff77;border-radius:5px;background:#164b75;color:#fff;font:600 12px/1.5 system-ui;box-shadow:0 2px 5px #0003;cursor:pointer;white-space:nowrap}#wt-side-toggle:hover,#wt-side-toggle:focus-visible{background:#246c9f;outline:2px solid #ffffffaa;outline-offset:1px}
 #wt-side-panel{position:fixed;right:0;top:0;height:100vh;width:min(350px,94vw);z-index:2147483501;background:#fff;color:#243b51;box-shadow:-7px 0 28px #0003;border-left:1px solid #b8cbd9;font:14px/1.4 system-ui;box-sizing:border-box;padding:20px;overflow-y:auto}
 #wt-side-panel[hidden]{display:none!important}#wt-side-panel h2{font-size:20px;margin:0 0 22px}#wt-side-panel .item{border-top:1px solid #e3eaf0;padding:15px 0}#wt-side-panel .item strong{display:block;margin-bottom:8px}#wt-side-panel button,#wt-side-panel select,#wt-home-shortcut{padding:9px 12px;background:#e9f2f8;border:1px solid #a9bfd2;color:#153c5b;border-radius:7px;cursor:pointer;font:inherit}#wt-side-panel p{color:#596f82;font-size:12px}#wt-home-shortcut{display:inline-block;text-decoration:none;background:#155b92;color:white;font-weight:700;margin:10px 0}
 `;document.head.append(css);
@@ -80,6 +80,40 @@ tools.push({name:'templates',click:templateEditor},{name:'drafts',click:draftSid
 for(const a of tools){const item=label('div','');item.className='item';item.append(label('strong',x(a.name)));const b=label('button',x('open'));b.onclick=a.click;item.append(b);panel.append(item)}
 const setting=label('div','');setting.className='item';setting.append(label('strong',x('settings')));const select=document.createElement('select');for(const [code,name]of [['fi','Suomi'],['en','English']]){const op=label('option',name);op.value=code;select.append(op)}select.value=lang;select.onchange=()=>{lang=select.value;let s={};try{s=JSON.parse(localStorage.getItem(KEY)||'{}')}catch{}s.lang=lang;localStorage.setItem(KEY,JSON.stringify(s));window.dispatchEvent(new CustomEvent('wilmatools:language',{detail:lang}));draw()};setting.append(label('span',x('language')+' '),select);panel.append(setting,label('p',x('hint')));
 }
+// Align the always-visible launcher with the account/school/invitations block
+// in Wilma's dark-blue header; keep fixed viewport coordinates while scrolling.
+function placeHeaderButton(){
+ const labels=[...document.querySelectorAll('a,button,span,div')].filter(el=>{
+  if(el.closest('#wt-side-panel,#wt-side-toggle'))return false;
+  const v=(el.textContent||'').replace(/\s+/g,' ').trim();
+  return v.length<85&&/^(Lähetä tapahtumakutsuja|Send event invitations)$/i.test(v);
+ });
+ const invite=labels.find(el=>el.matches('a,button'))||labels[0];
+ if(invite){
+  const rect=invite.getBoundingClientRect();
+  if(rect.width&&rect.top>=-2&&rect.top<210){
+   const right=Math.max(12,Math.min(window.innerWidth-110,window.innerWidth-rect.right));
+   btn.style.right=right+'px';
+   btn.style.top=Math.min(190,Math.max(6,rect.bottom+5))+'px';
+   return true;
+  }
+ }
+ // Conservative header fallback if Wilma's invitation wording differs.
+ const header=document.querySelector('header,.navbar-header,.navbar-inverse,.navbar-fixed-top');
+ if(header){
+  const rect=header.getBoundingClientRect();
+  if(rect.width&&rect.top>=-2&&rect.bottom>35){
+   btn.style.right='18px';
+   btn.style.top=Math.min(180,Math.max(8,rect.bottom-33))+'px';
+   return true;
+  }
+ }
+ return false;
+}
+placeHeaderButton();
+let wtHeaderChecks=0;
+const wtHeaderTimer=setInterval(()=>{placeHeaderButton();if(++wtHeaderChecks>=10)clearInterval(wtHeaderTimer)},800);
+window.addEventListener('resize',placeHeaderButton);
 btn.onclick=()=>{panel.hidden=!panel.hidden;if(!panel.hidden)draw()};
 window.addEventListener('wilmatools:open-templates',()=>{panel.hidden=false;templateEditor()});
 window.addEventListener('wilmatools:open-drafts',()=>{panel.hidden=false;draftSidebar()});
