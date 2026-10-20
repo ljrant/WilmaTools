@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.18.5
+// @version      0.19.0
 // @description  Local Wilma homeroom gradebook overview, FI/EN
 // @match        https://*.inschool.fi/profiles/classes/*
 // @grant        none
@@ -21,7 +21,7 @@ const sy=()=>{let d=new Date();return d.getFullYear()-(d.getMonth()<7?1:0)};
 const saved=(()=>{try{return JSON.parse(localStorage.getItem('wilmatools.settings')||'{}')}catch{return {}}})();
 const cfg={lang:saved.lang==='en'?'en':'fi',enabled:saved.enabled!==false,hidden:new Set(saved.hidden||[])};
 const save=()=>localStorage.setItem('wilmatools.settings',JSON.stringify({lang:cfg.lang,enabled:cfg.enabled,hidden:[...cfg.hidden]}));
-const state={loaded:false,source:'dropdown',messageSubject:'',messageText:'',messageStudentIds:new Set(),people:[],rows:[],errors:[],mode:'matrix',period:'school',year:sy(),from:'',to:'',term:'',sort:'',busy:false,stop:false};
+const state={loaded:false,source:'dropdown',messageSubject:'',messageText:'',messageStudentIds:new Set(),people:[],rows:[],errors:[],mode:'matrix',nameDescending:false,period:'school',year:sy(),from:'',to:'',term:'',sort:'',busy:false,stop:false};
 const isoDate=s=>{let m=tidy(s).match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);if(!m)return /^\d{4}-\d{2}-\d{2}$/.test(tidy(s))?tidy(s):'';let d=new Date(+m[3],+m[2]-1,+m[1]);return d.getDate()===+m[1]&&d.getMonth()===+m[2]-1&&d.getFullYear()===+m[3]?m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0'):''};
 const colors={'4':['#b91c1c','#fff'],'5':['#e76f51','#fff'],'6':['#f4a261','#222'],'7':['#f6d365','#222'],'8':['#aad581','#222'],'9':['#55ae78','#fff'],'10':['#167347','#fff'],'P':['#4472c4','#fff'],'U':['#8053b8','#fff'],'K':['#bb3f8d','#fff']};
 const color=(g,has)=>!has?['#e5e7eb','#333']:!g?['#fff1b8','#443300']:colors[g.toUpperCase()]||['#d69cde','#222'];
@@ -106,21 +106,28 @@ function installAssessmentTab(){
  link.href=classBase+'#wt-assessment';link.style.cssText='display:block;padding:10px 14px;background:#e7f3ff;color:#155b91;font-weight:700;border:1px solid #9fc6e5;border-radius:6px 6px 0 0';
  link.addEventListener('click',e=>{if(!onClassMain)return;e.preventDefault();e.stopPropagation();activateAssessment()});
  item.append(link);
+ const issuesItem=document.createElement('li');issuesItem.id='wt-class-issues-tab';
+ const issuesLink=el('a',cfg.lang==='fi'?'Huomiot':'Issues');issuesLink.href=classBase+'#wt-issues';
+ issuesLink.style.cssText=link.style.cssText;
+ issuesLink.addEventListener('click',e=>{if(!onClassMain)return;e.preventDefault();e.stopPropagation();activateAssessment('issues')});
+ issuesItem.append(issuesLink);
  const support=[...tabs.querySelectorAll('a')].find(a=>/Tuen tilastot|Support statistics/i.test(a.textContent));
  if(support){
   const dropdown=support.closest('li.dropdown');
-  if(dropdown&&dropdown.parentElement===tabs)dropdown.after(item);else tabs.append(item);
- }else tabs.append(item);
- if(onClassMain)tabs.addEventListener('click',e=>{if(!e.target.closest('#wt-class-assessment-tab'))restoreNativeContent()},true);
+  if(dropdown&&dropdown.parentElement===tabs)dropdown.after(item,issuesItem);else tabs.append(item,issuesItem);
+ }else tabs.append(item,issuesItem);
+ if(onClassMain)tabs.addEventListener('click',e=>{if(!e.target.closest('#wt-class-assessment-tab,#wt-class-issues-tab'))restoreNativeContent()},true);
 }
 function restoreNativeContent(){
  if(!assessmentHost)return;
  assessmentHost.hidden=true;
  for(const entry of originalContent){entry.node.style.display=entry.display}
  document.getElementById('wt-class-assessment-tab')?.classList.remove('active');
+ document.getElementById('wt-class-issues-tab')?.classList.remove('active');
 }
-function activateAssessment(){
- if(!onClassMain){location.assign(classBase+'#wt-assessment');return}
+function activateAssessment(mode='matrix'){
+ if(!onClassMain){location.assign(classBase+(mode==='issues'?'#wt-issues':'#wt-assessment'));return}
+ state.mode=mode;
  installAssessmentTab();
  const tabs=tabStrip();if(!tabs)return;
  if(!assessmentHost){
@@ -142,19 +149,20 @@ function activateAssessment(){
  for(const entry of originalContent)entry.node.style.display='none';
  assessmentHost.hidden=false;
  tabs.querySelectorAll('li.active').forEach(n=>n.classList.remove('active'));
- document.getElementById('wt-class-assessment-tab')?.classList.add('active');
- if(!root)open();
+ document.getElementById('wt-class-assessment-tab')?.classList.toggle('active',mode==='matrix');
+ document.getElementById('wt-class-issues-tab')?.classList.toggle('active',mode==='issues');
+ if(!root)open();else render();
  if(!assessmentLoaded){assessmentLoaded=true;collect()}
 }
 installAssessmentTab();
 let tabTries=0;const tabTimer=setInterval(()=>{
  installAssessmentTab();
- if(onClassMain&&location.hash==='#wt-assessment'&&document.getElementById('wt-class-assessment-tab')&&!assessmentLoaded)activateAssessment();
+ if(onClassMain&&['#wt-assessment','#wt-issues'].includes(location.hash)&&document.getElementById('wt-class-assessment-tab')&&!assessmentLoaded)activateAssessment(location.hash==='#wt-issues'?'issues':'matrix');
  if(++tabTries>=12)clearInterval(tabTimer)
 },700);
 function status(x){if($('#wt-status'))$('#wt-status').textContent=x}
-function open(){state.people=[];root=el('div');root.id='wt-screen';root.innerHTML=`<div id="wt-panel" role="region" aria-label="WilmaTools"><div id="wt-header"><strong id="wt-title"></strong><button id="wt-collect"></button><button id="wt-stop"></button><button id="wt-matrix"></button><button id="wt-issues"></button><button id="wt-settings"></button><button id="wt-close"></button></div><div id="wt-toolbar"><label><select id="wt-period"><option value="school"></option><option value="custom"></option><option value="all"></option></select></label><label id="wt-year-label"><select id="wt-year"></select></label><label id="wt-from-label" hidden><span id="wt-from-caption"></span> <input id="wt-from" type="date"></label><label id="wt-to-label" hidden><span id="wt-to-caption"></span> <input id="wt-to" type="date"></label><input id="wt-search" type="search"><button id="wt-hide"></button><button id="wt-export"></button></div><div id="wt-settingsbox" hidden style="padding:10px 16px"><label id="wt-lang-label"></label> <select id="wt-lang"><option value="fi">Suomi</option><option value="en">English</option></select> <label><input id="wt-enabled" type="checkbox"> <span id="wt-enabled-label"></span></label></div><div id="wt-hide-list" hidden></div><div id="wt-status"></div><div id="wt-note"></div><div id="wt-content"></div></div>`;assessmentHost.append(root);for(let y=sy()-7;y<=sy()+2;y++){const op=el('option',y+'–'+(y+1));op.value=y;$('#wt-year').append(op)}$('#wt-year').value=state.year;$('#wt-period').value=state.period;$('#wt-lang').value=cfg.lang;$('#wt-enabled').checked=cfg.enabled;$('#wt-search').value=state.term;$('#wt-from').value=state.from;$('#wt-to').value=state.to;$('#wt-close').onclick=restoreNativeContent;$('#wt-collect').onclick=()=>{};$('#wt-stop').onclick=()=>{state.stop=true};$('#wt-matrix').onclick=()=>{state.mode='matrix';render()};$('#wt-issues').onclick=()=>{state.mode='issues';render()};$('#wt-settings').onclick=()=>{$('#wt-settingsbox').hidden=!$('#wt-settingsbox').hidden};$('#wt-hide').onclick=()=>{$('#wt-hide-list').hidden=!$('#wt-hide-list').hidden};$('#wt-lang').onchange=e=>{cfg.lang=e.target.value;save();translate();render()};$('#wt-enabled').onchange=e=>{cfg.enabled=e.target.checked;save();translate();render()};$('#wt-period').onchange=e=>{state.period=e.target.value;dateUI();render()};$('#wt-year').onchange=e=>{state.year=+e.target.value;render()};$('#wt-from').onchange=e=>{state.from=e.target.value;render()};$('#wt-to').onchange=e=>{state.to=e.target.value;render()};$('#wt-search').oninput=e=>{state.term=e.target.value;render()};$('#wt-export').onclick=download;translate();status(cfg.lang==='fi'?'Valmis hakemaan ryhmän tiedot.':'Ready to load group data.');render()}
-function translate(){$('#wt-title').textContent=t('title');for(const [id,key] of [['collect','collect'],['stop','stop'],['matrix','matrix'],['issues','issues'],['settings','settings'],['close','close'],['hide','hide'],['export','export']])$('#wt-'+id).textContent=t(key);for(const [i,k] of [['school','school'],['custom','custom'],['all','all']])$('#wt-period').querySelector('[value="'+i+'"]').textContent=t(k);$('#wt-lang-label').textContent=t('language');$('#wt-enabled-label').textContent=t('enabled');$('#wt-search').placeholder=t('search');$('#wt-from-caption').textContent=t('from');$('#wt-to-caption').textContent=t('to');$('#wt-note').textContent=t('warning')+' '+t('dateNote');dateUI()}
+function open(){state.people=[];root=el('div');root.id='wt-screen';root.innerHTML=`<div id="wt-panel" role="region" aria-label="WilmaTools"><div id="wt-header"><strong id="wt-title"></strong></div><div id="wt-toolbar"><label><select id="wt-period"><option value="school"></option><option value="custom"></option><option value="all"></option></select></label><label id="wt-year-label"><select id="wt-year"></select></label><label id="wt-from-label" hidden><span id="wt-from-caption"></span> <input id="wt-from" type="date"></label><label id="wt-to-label" hidden><span id="wt-to-caption"></span> <input id="wt-to" type="date"></label><input id="wt-search" type="search"><button id="wt-hide"></button><button id="wt-export"></button></div><div id="wt-hide-list" hidden></div><div id="wt-status"></div><div id="wt-note"></div><div id="wt-content"></div></div>`;assessmentHost.append(root);for(let y=sy()-7;y<=sy()+2;y++){const op=el('option',y+'–'+(y+1));op.value=y;$('#wt-year').append(op)}$('#wt-year').value=state.year;$('#wt-period').value=state.period;$('#wt-search').value=state.term;$('#wt-from').value=state.from;$('#wt-to').value=state.to;$('#wt-hide').onclick=()=>{$('#wt-hide-list').hidden=!$('#wt-hide-list').hidden};$('#wt-period').onchange=e=>{state.period=e.target.value;dateUI();render()};$('#wt-year').onchange=e=>{state.year=+e.target.value;render()};$('#wt-from').onchange=e=>{state.from=e.target.value;render()};$('#wt-to').onchange=e=>{state.to=e.target.value;render()};$('#wt-search').oninput=e=>{state.term=e.target.value;render()};$('#wt-export').onclick=download;translate();status(cfg.lang==='fi'?'Valmis hakemaan ryhmän tiedot.':'Ready to load group data.');render()}
+function translate(){$('#wt-title').textContent=t('title');for(const [id,key] of [['hide','hide'],['export','export']])$('#wt-'+id).textContent=t(key);for(const [i,k] of [['school','school'],['custom','custom'],['all','all']])$('#wt-period').querySelector('[value="'+i+'"]').textContent=t(k);$('#wt-search').placeholder=t('search');$('#wt-from-caption').textContent=t('from');$('#wt-to-caption').textContent=t('to');$('#wt-note').textContent=t('warning')+' '+t('dateNote');dateUI()}
 function dateUI(){$('#wt-year-label').hidden=state.period!=='school';$('#wt-from-label').hidden=state.period!=='custom';$('#wt-to-label').hidden=state.period!=='custom'}
 function selected(){let a=state.rows.filter(r=>!cfg.hidden.has(r.key));if(state.period==='school')a=a.filter(r=>r.date&&r.date>=state.year+'-08-01'&&r.date<=(state.year+1)+'-07-31');if(state.period==='custom')a=a.filter(r=>r.date&&state.from&&state.to&&state.from<=state.to&&r.date>=state.from&&r.date<=state.to);if(state.term.trim()){let q=state.term.toLocaleLowerCase('fi');a=a.filter(r=>[r.student,r.name,r.group,r.subject].some(x=>x.toLocaleLowerCase('fi').includes(q)))}return a}
 function renderHide(){const pane=$('#wt-hide-list');pane.replaceChildren(el('div',t('hideNote')));const cs=[...new Map(state.rows.map(r=>[r.key,r.name])).entries()].sort((a,b)=>a[1].localeCompare(b[1],'fi'));for(const [key,name]of cs){const l=el('label');const c=el('input');c.type='checkbox';c.checked=!cfg.hidden.has(key);c.onchange=()=>{c.checked?cfg.hidden.delete(key):cfg.hidden.add(key);save();render()};l.append(c,document.createTextNode(' '+name));l.title=key.replaceAll('\u001f',' / ');pane.append(l)}}
@@ -185,7 +193,7 @@ function openMessageEditor(available){
   actions.append(copy,cancel);card.append(actions);overlay.append(card);document.body.append(overlay);
   overlay.addEventListener('click',e=>{if(e.target===overlay)close()});
 }
-function render(){if(!root||state.busy||!state.loaded)return;$('#wt-stop').disabled=!state.busy;$('#wt-collect').disabled=state.busy||!cfg.enabled;$('#wt-export').disabled=!state.rows.length;$('#wt-matrix').disabled=state.mode==='matrix';$('#wt-issues').disabled=state.mode==='issues';renderHide();const box=$('#wt-content');box.replaceChildren();if(!cfg.enabled||!state.rows.length){box.append(el('p',t('none')));return}const rows=selected();if(state.mode==='issues'){const flagged=rows.filter(r=>flag(r.grade));box.append(el('p',t('found',{n:new Set(flagged.map(x=>x.id)).size,c:new Set(flagged.map(x=>x.key)).size,r:flagged.length})));const unique=[...new Map(flagged.map(r=>[r.id,{id:r.id,name:r.student}])).values()];
+function render(){if(!root||state.busy||!state.loaded)return;$('#wt-export').disabled=!state.rows.length;renderHide();const box=$('#wt-content');box.replaceChildren();if(!cfg.enabled||!state.rows.length){box.append(el('p',t('none')));return}const rows=selected();if(state.mode==='issues'){const flagged=rows.filter(r=>flag(r.grade));box.append(el('p',t('found',{n:new Set(flagged.map(x=>x.id)).size,c:new Set(flagged.map(x=>x.key)).size,r:flagged.length})));const unique=[...new Map(flagged.map(r=>[r.id,{id:r.id,name:r.student}])).values()];
 const msgbox=el('section');msgbox.style.cssText='max-width:760px;border:1px solid #cedde9;border-radius:9px;background:#f5f9fc;padding:12px;margin:10px 0;font:14px/1.45 system-ui';
 msgbox.append(el('h3',cfg.lang==='fi'?'Viestit huomiota vaativille opiskelijoille':'Message students with concerning grades'));
 const help=el('p',cfg.lang==='fi'?'Valitse opiskelijat ja tallennettu viestipohja. Vastaanottajat valitaan ja tarkistetaan Wilmassa ennen lähettämistä.':'Select students and a saved template. Recipients must be selected and verified in Wilma before sending.');msgbox.append(help);
@@ -210,7 +218,7 @@ const go=el('button',cfg.lang==='fi'?'Valmistele Wilma-viesti':'Prepare Wilma me
 const editor=el('button',cfg.lang==='fi'?'Muokkaa viestipohjia sivupaneelissa':'Manage templates in sidebar');editor.onclick=()=>window.dispatchEvent(new Event('wilmatools:open-templates'));templateRow.append(editor);
 msgbox.append(templateRow);box.append(msgbox);
 const table=el('table');table.className='wt-issues';const h=el('tr');for(const v of ['student','course','grade','issue'])h.append(el('th',t(v)));table.append(h);flagged.sort((a,b)=>a.student.localeCompare(b.student,'fi')||a.name.localeCompare(b.name,'fi'));for(const r of flagged){const tr=el('tr');tr.append(el('td',r.student),el('td',r.name));const g=el('td',r.grade,'wt-grade'),[bg,fg]=color(r.grade,true);g.style.background=bg;g.style.color=fg;tr.append(g,el('td',t(flag(r.grade))));table.append(tr)}box.append(table);return}
-const cols=[...new Map(rows.map(r=>[r.key,r.name])).entries()].sort((a,b)=>a[1].localeCompare(b[1],'fi'));const by=new Map();for(const r of rows){if(!by.has(r.id))by.set(r.id,new Map());by.get(r.id).set(r.key,r)}const people=state.people.filter(s=>by.has(s.id));if(state.sort)people.sort((a,b)=>(by.get(a.id)?.get(state.sort)?.grade||'').localeCompare(by.get(b.id)?.get(state.sort)?.grade||'','fi',{numeric:true}));box.append(el('p',t('found',{n:people.length,c:cols.length,r:rows.length})));const table=el('table'),head=el('thead'),hr=el('tr');hr.append(el('th',t('student')));for(const [key,name]of cols){const th=el('th',name,'wt-heading');th.title=key.replaceAll('\u001f',' / ');th.tabIndex=0;th.onclick=()=>{state.sort=key;render()};th.onkeydown=e=>{if(e.key==='Enter'){state.sort=key;render()}};hr.append(th)}head.append(hr);table.append(head);const body=el('tbody');for(const s of people){const tr=el('tr');tr.append(el('td',s.name));for(const [key]of cols){const r=by.get(s.id)?.get(key),td=el('td',r?(r.grade||'…'):'—','wt-grade'),[bg,fg]=color(r?.grade||'',!!r);td.style.background=bg;td.style.color=fg;td.title=r?r.name+' | ECTS: '+r.ects:t('missing');tr.append(td)}body.append(tr)}table.append(body);box.append(table)}
+const cols=[...new Map(rows.map(r=>[r.key,r.name])).entries()].sort((a,b)=>a[1].localeCompare(b[1],'fi'));const by=new Map();for(const r of rows){if(!by.has(r.id))by.set(r.id,new Map());by.get(r.id).set(r.key,r)}const people=state.people.filter(s=>by.has(s.id));people.sort((a,b)=>state.sort&&state.sort!=='student'?(by.get(a.id)?.get(state.sort)?.grade||'').localeCompare(by.get(b.id)?.get(state.sort)?.grade||'','fi',{numeric:true}):a.name.localeCompare(b.name,'fi',{numeric:true})*(state.nameDescending?-1:1));box.append(el('p',t('found',{n:people.length,c:cols.length,r:rows.length})));const table=el('table'),head=el('thead'),hr=el('tr');const studentHeading=el('th',t('student')+' ↕');studentHeading.style.cursor='pointer';studentHeading.tabIndex=0;studentHeading.title=cfg.lang==='fi'?'Järjestä opiskelijan nimen mukaan':'Sort by student name';const sortStudents=()=>{state.nameDescending=state.sort==='student'?!state.nameDescending:false;state.sort='student';render()};studentHeading.onclick=sortStudents;studentHeading.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();sortStudents()}};hr.append(studentHeading);for(const [key,name]of cols){const th=el('th',name,'wt-heading');th.title=key.replaceAll('\u001f',' / ');th.tabIndex=0;th.onclick=()=>{state.sort=key;render()};th.onkeydown=e=>{if(e.key==='Enter'){state.sort=key;render()}};hr.append(th)}head.append(hr);table.append(head);const body=el('tbody');for(const s of people){const tr=el('tr');tr.append(el('td',s.name));for(const [key]of cols){const r=by.get(s.id)?.get(key),td=el('td',r?(r.grade||'…'):'—','wt-grade'),[bg,fg]=color(r?.grade||'',!!r);td.style.background=bg;td.style.color=fg;td.title=r?r.name+' | ECTS: '+r.ects:t('missing');tr.append(td)}body.append(tr)}table.append(body);box.append(table)}
 async function collect(){
  if(state.busy||state.loaded)return;
  state.busy=true;state.stop=false;state.errors=[];
