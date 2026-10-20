@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.16.1
+// @version      0.17.0
 // @description  Local Wilma homeroom gradebook overview, FI/EN
 // @match        https://*.inschool.fi/profiles/students/*/choices*
 // @grant        none
@@ -18,7 +18,7 @@ const sy=()=>{let d=new Date();return d.getFullYear()-(d.getMonth()<7?1:0)};
 const saved=(()=>{try{return JSON.parse(localStorage.getItem('wilmatools.settings')||'{}')}catch{return {}}})();
 const cfg={lang:saved.lang==='en'?'en':'fi',enabled:saved.enabled!==false,hidden:new Set(saved.hidden||[])};
 const save=()=>localStorage.setItem('wilmatools.settings',JSON.stringify({lang:cfg.lang,enabled:cfg.enabled,hidden:[...cfg.hidden]}));
-const state={messageSubject:'',messageText:'',messageStudentIds:new Set(),people:[],rows:[],errors:[],mode:'matrix',period:'school',year:sy(),from:'',to:'',term:'',sort:'',busy:false,stop:false};
+const state={source:'dropdown',messageSubject:'',messageText:'',messageStudentIds:new Set(),people:[],rows:[],errors:[],mode:'matrix',period:'school',year:sy(),from:'',to:'',term:'',sort:'',busy:false,stop:false};
 const isoDate=s=>{let m=tidy(s).match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);if(!m)return /^\d{4}-\d{2}-\d{2}$/.test(tidy(s))?tidy(s):'';let d=new Date(+m[3],+m[2]-1,+m[1]);return d.getDate()===+m[1]&&d.getMonth()===+m[2]-1&&d.getFullYear()===+m[3]?m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0'):''};
 const colors={'4':['#b91c1c','#fff'],'5':['#e76f51','#fff'],'6':['#f4a261','#222'],'7':['#f6d365','#222'],'8':['#aad581','#222'],'9':['#55ae78','#fff'],'10':['#167347','#fff'],'P':['#4472c4','#fff'],'U':['#8053b8','#fff'],'K':['#bb3f8d','#fff']};
 const color=(g,has)=>!has?['#e5e7eb','#333']:!g?['#fff1b8','#443300']:colors[g.toUpperCase()]||['#d69cde','#222'];
@@ -46,6 +46,42 @@ function currentStudentName(){
     if(label){const copy=label.cloneNode(true);copy.querySelectorAll('span[aria-hidden],svg,.caret').forEach(x=>x.remove());const name=tidy(copy.textContent);if(name&&name.length<120)return name;}
   }
   return '';
+}
+async function discoverHomeroom(){
+ try{
+  const homeRes=await fetch(location.origin+'/',{credentials:'same-origin',cache:'no-store',redirect:'follow'});
+  if(!homeRes.ok||new URL(homeRes.url).origin!==location.origin||new URL(homeRes.url).pathname!=='/')return null;
+  const home=new DOMParser().parseFromString(await homeRes.text(),'text/html');
+  const heading=[...home.querySelectorAll('h1,h2,h3,h4,h5,h6')].find(h=>/^Ohjausryhmäsi$/i.test(tidy(h.textContent)));
+  if(!heading)return null;
+  let classLink=null;
+  for(let node=heading.parentElement,depth=0;node&&depth<5;node=node.parentElement,depth++){
+   const headings=[...node.querySelectorAll('h1,h2,h3,h4,h5,h6')];
+   if(headings.some(h=>h!==heading&&/^Ryhmät tässä jaksossa$|^Ilmoitukset$/i.test(tidy(h.textContent))))break;
+   classLink=[...node.querySelectorAll('a[href]')].find(a=>{try{const u=new URL(a.getAttribute('href'),location.origin);return u.origin===location.origin&&/^\\/profiles\\/classes\\/\\d+\\/?$/.test(u.pathname)}catch{return false}});
+   if(classLink)break;
+  }
+  if(!classLink)return null;
+  const groupUrl=new URL(classLink.getAttribute('href'),location.origin);
+  const response=await fetch(groupUrl.href,{credentials:'same-origin',cache:'no-store',redirect:'follow'});
+  if(!response.ok||new URL(response.url).origin!==location.origin||new URL(response.url).pathname!==groupUrl.pathname)return null;
+  const doc=new DOMParser().parseFromString(await response.text(),'text/html');
+  const students=new Map();
+  for(const a of doc.querySelectorAll('a[href]')){
+   try{
+    const u=new URL(a.getAttribute('href'),location.origin);
+    const m=u.origin===location.origin&&u.pathname.match(/^\\/profiles\\/students\\/(\\d+)(?:\\/|$)/);
+    const name=tidy(a.textContent);
+    if(m&&name&&name.length<120&&!students.has(m[1]))students.set(m[1],{id:m[1],name,url:location.origin+'/profiles/students/'+m[1]+'/choices?view=gradebook'});
+   }catch{}
+  }
+  return students.size?{people:[...students.values()],source:'homeroom'}:null;
+ }catch(e){console.warn('[WilmaTools] Homeroom lookup unavailable; using student dropdown.');return null}
+}
+async function getPeople(){
+ const homeroom=await discoverHomeroom();
+ if(homeroom)return homeroom;
+ return {people:discover(),source:'dropdown'};
 }
 function discover(){
 const lists=[...document.querySelectorAll('li')].map(li=>[...li.querySelectorAll('a[href]')].map(a=>{
@@ -76,7 +112,7 @@ window.addEventListener('wilmatools:open-progress',()=>{if(!root)open()});
 if(new URLSearchParams(location.search).get('wt')==='open')setTimeout(()=>{if(!root)open()},350);
 if(window.__wilmaToolsHub)launch.style.display='none';
 function status(x){if($('#wt-status'))$('#wt-status').textContent=x}
-function open(){state.people=discover();root=el('div');root.id='wt-screen';root.innerHTML=`<div id="wt-panel" role="dialog" aria-modal="true"><div id="wt-header"><strong id="wt-title"></strong><button id="wt-collect"></button><button id="wt-stop"></button><button id="wt-matrix"></button><button id="wt-issues"></button><button id="wt-settings"></button><button id="wt-close"></button></div><div id="wt-toolbar"><label><select id="wt-period"><option value="school"></option><option value="custom"></option><option value="all"></option></select></label><label id="wt-year-label"><select id="wt-year"></select></label><label id="wt-from-label" hidden><span id="wt-from-caption"></span> <input id="wt-from" type="date"></label><label id="wt-to-label" hidden><span id="wt-to-caption"></span> <input id="wt-to" type="date"></label><input id="wt-search" type="search"><button id="wt-hide"></button><button id="wt-export"></button></div><div id="wt-settingsbox" hidden style="padding:10px 16px"><label id="wt-lang-label"></label> <select id="wt-lang"><option value="fi">Suomi</option><option value="en">English</option></select> <label><input id="wt-enabled" type="checkbox"> <span id="wt-enabled-label"></span></label></div><div id="wt-hide-list" hidden></div><div id="wt-status"></div><div id="wt-note"></div><div id="wt-content"></div></div>`;document.body.append(root);for(let y=sy()-7;y<=sy()+2;y++){const op=el('option',y+'–'+(y+1));op.value=y;$('#wt-year').append(op)}$('#wt-year').value=state.year;$('#wt-period').value=state.period;$('#wt-lang').value=cfg.lang;$('#wt-enabled').checked=cfg.enabled;$('#wt-search').value=state.term;$('#wt-from').value=state.from;$('#wt-to').value=state.to;$('#wt-close').onclick=()=>{state.stop=true;root.remove();root=null};$('#wt-collect').onclick=collect;$('#wt-stop').onclick=()=>{state.stop=true};$('#wt-matrix').onclick=()=>{state.mode='matrix';render()};$('#wt-issues').onclick=()=>{state.mode='issues';render()};$('#wt-settings').onclick=()=>{$('#wt-settingsbox').hidden=!$('#wt-settingsbox').hidden};$('#wt-hide').onclick=()=>{$('#wt-hide-list').hidden=!$('#wt-hide-list').hidden};$('#wt-lang').onchange=e=>{cfg.lang=e.target.value;save();translate();render()};$('#wt-enabled').onchange=e=>{cfg.enabled=e.target.checked;save();translate();render()};$('#wt-period').onchange=e=>{state.period=e.target.value;dateUI();render()};$('#wt-year').onchange=e=>{state.year=+e.target.value;render()};$('#wt-from').onchange=e=>{state.from=e.target.value;render()};$('#wt-to').onchange=e=>{state.to=e.target.value;render()};$('#wt-search').oninput=e=>{state.term=e.target.value;render()};$('#wt-export').onclick=download;translate();status(t('ready',{n:state.people.length}));render()}
+function open(){state.people=discover();root=el('div');root.id='wt-screen';root.innerHTML=`<div id="wt-panel" role="dialog" aria-modal="true"><div id="wt-header"><strong id="wt-title"></strong><button id="wt-collect"></button><button id="wt-stop"></button><button id="wt-matrix"></button><button id="wt-issues"></button><button id="wt-settings"></button><button id="wt-close"></button></div><div id="wt-toolbar"><label><select id="wt-period"><option value="school"></option><option value="custom"></option><option value="all"></option></select></label><label id="wt-year-label"><select id="wt-year"></select></label><label id="wt-from-label" hidden><span id="wt-from-caption"></span> <input id="wt-from" type="date"></label><label id="wt-to-label" hidden><span id="wt-to-caption"></span> <input id="wt-to" type="date"></label><input id="wt-search" type="search"><button id="wt-hide"></button><button id="wt-export"></button></div><div id="wt-settingsbox" hidden style="padding:10px 16px"><label id="wt-lang-label"></label> <select id="wt-lang"><option value="fi">Suomi</option><option value="en">English</option></select> <label><input id="wt-enabled" type="checkbox"> <span id="wt-enabled-label"></span></label></div><div id="wt-hide-list" hidden></div><div id="wt-status"></div><div id="wt-note"></div><div id="wt-content"></div></div>`;document.body.append(root);for(let y=sy()-7;y<=sy()+2;y++){const op=el('option',y+'–'+(y+1));op.value=y;$('#wt-year').append(op)}$('#wt-year').value=state.year;$('#wt-period').value=state.period;$('#wt-lang').value=cfg.lang;$('#wt-enabled').checked=cfg.enabled;$('#wt-search').value=state.term;$('#wt-from').value=state.from;$('#wt-to').value=state.to;$('#wt-close').onclick=()=>{state.stop=true;root.remove();root=null};$('#wt-collect').onclick=collect;$('#wt-stop').onclick=()=>{state.stop=true};$('#wt-matrix').onclick=()=>{state.mode='matrix';render()};$('#wt-issues').onclick=()=>{state.mode='issues';render()};$('#wt-settings').onclick=()=>{$('#wt-settingsbox').hidden=!$('#wt-settingsbox').hidden};$('#wt-hide').onclick=()=>{$('#wt-hide-list').hidden=!$('#wt-hide-list').hidden};$('#wt-lang').onchange=e=>{cfg.lang=e.target.value;save();translate();render()};$('#wt-enabled').onchange=e=>{cfg.enabled=e.target.checked;save();translate();render()};$('#wt-period').onchange=e=>{state.period=e.target.value;dateUI();render()};$('#wt-year').onchange=e=>{state.year=+e.target.value;render()};$('#wt-from').onchange=e=>{state.from=e.target.value;render()};$('#wt-to').onchange=e=>{state.to=e.target.value;render()};$('#wt-search').oninput=e=>{state.term=e.target.value;render()};$('#wt-export').onclick=download;translate();status(t('ready',{n:state.people.length}));render();getPeople().then(result=>{if(!root||state.busy)return;state.people=result.people;state.source=result.source;status((cfg.lang==='fi'?(result.source==='homeroom'?'Ohjausryhmän sivulta':'Opiskelijavalikosta'):(result.source==='homeroom'?'Homeroom page':'Student dropdown'))+': '+result.people.length+' '+(cfg.lang==='fi'?'opiskelijaa':'students'))})}
 function translate(){$('#wt-title').textContent=t('title');for(const [id,key] of [['collect','collect'],['stop','stop'],['matrix','matrix'],['issues','issues'],['settings','settings'],['close','close'],['hide','hide'],['export','export']])$('#wt-'+id).textContent=t(key);for(const [i,k] of [['school','school'],['custom','custom'],['all','all']])$('#wt-period').querySelector('[value="'+i+'"]').textContent=t(k);$('#wt-lang-label').textContent=t('language');$('#wt-enabled-label').textContent=t('enabled');$('#wt-search').placeholder=t('search');$('#wt-from-caption').textContent=t('from');$('#wt-to-caption').textContent=t('to');$('#wt-note').textContent=t('warning')+' '+t('dateNote');dateUI()}
 function dateUI(){$('#wt-year-label').hidden=state.period!=='school';$('#wt-from-label').hidden=state.period!=='custom';$('#wt-to-label').hidden=state.period!=='custom'}
 function selected(){let a=state.rows.filter(r=>!cfg.hidden.has(r.key));if(state.period==='school')a=a.filter(r=>r.date&&r.date>=state.year+'-08-01'&&r.date<=(state.year+1)+'-07-31');if(state.period==='custom')a=a.filter(r=>r.date&&state.from&&state.to&&state.from<=state.to&&r.date>=state.from&&r.date<=state.to);if(state.term.trim()){let q=state.term.toLocaleLowerCase('fi');a=a.filter(r=>[r.student,r.name,r.group,r.subject].some(x=>x.toLocaleLowerCase('fi').includes(q)))}return a}
@@ -134,6 +170,39 @@ const editor=el('button',cfg.lang==='fi'?'Muokkaa viestipohjia sivupaneelissa':'
 msgbox.append(templateRow);box.append(msgbox);
 const table=el('table');table.className='wt-issues';const h=el('tr');for(const v of ['student','course','grade','issue'])h.append(el('th',t(v)));table.append(h);flagged.sort((a,b)=>a.student.localeCompare(b.student,'fi')||a.name.localeCompare(b.name,'fi'));for(const r of flagged){const tr=el('tr');tr.append(el('td',r.student),el('td',r.name));const g=el('td',r.grade,'wt-grade'),[bg,fg]=color(r.grade,true);g.style.background=bg;g.style.color=fg;tr.append(g,el('td',t(flag(r.grade))));table.append(tr)}box.append(table);return}
 const cols=[...new Map(rows.map(r=>[r.key,r.name])).entries()].sort((a,b)=>a[1].localeCompare(b[1],'fi'));const by=new Map();for(const r of rows){if(!by.has(r.id))by.set(r.id,new Map());by.get(r.id).set(r.key,r)}const people=state.people.filter(s=>by.has(s.id));if(state.sort)people.sort((a,b)=>(by.get(a.id)?.get(state.sort)?.grade||'').localeCompare(by.get(b.id)?.get(state.sort)?.grade||'','fi',{numeric:true}));box.append(el('p',t('found',{n:people.length,c:cols.length,r:rows.length})));const table=el('table'),head=el('thead'),hr=el('tr');hr.append(el('th',t('student')));for(const [key,name]of cols){const th=el('th',name,'wt-heading');th.title=key.replaceAll('\u001f',' / ');th.tabIndex=0;th.onclick=()=>{state.sort=key;render()};th.onkeydown=e=>{if(e.key==='Enter'){state.sort=key;render()}};hr.append(th)}head.append(hr);table.append(head);const body=el('tbody');for(const s of people){const tr=el('tr');tr.append(el('td',s.name));for(const [key]of cols){const r=by.get(s.id)?.get(key),td=el('td',r?(r.grade||'…'):'—','wt-grade'),[bg,fg]=color(r?.grade||'',!!r);td.style.background=bg;td.style.color=fg;td.title=r?r.name+' | ECTS: '+r.ects:t('missing');tr.append(td)}body.append(tr)}table.append(body);box.append(table)}
-async function collect(){state.people=discover();if(!state.people.length)return status(t('none'));if(!confirm(t('confirm',{n:state.people.length})))return;state.busy=true;state.stop=false;state.rows=[];state.errors=[];render();for(let i=0;i<state.people.length;i++){if(state.stop||!root)break;const s=state.people[i];status(t('reading',{i:i+1,n:state.people.length}));try{const res=await fetch(s.url,{credentials:'same-origin',redirect:'follow',cache:'no-store'});if(!res.ok||new URL(res.url).origin!==location.origin||!p.test(new URL(res.url).pathname))throw Error('Unexpected HTTP response');const data=parse(await res.text(),s);if(!data.length)state.errors.push('Student '+(i+1)+': 0 courses');state.rows.push(...data)}catch(e){state.errors.push('Student '+(i+1)+': '+e.message)}render();if(i<state.people.length-1&&!state.stop)await new Promise(r=>setTimeout(r,650))}state.busy=false;if(root){status(t('finished',{n:state.rows.length,e:state.errors.length}));render()}}
+async function collect(){
+ if(state.busy)return;
+ state.busy=true;state.stop=false;state.errors=[];state.rows=[];
+ status(cfg.lang==='fi'?'Haetaan ohjausryhmän opiskelijalistaa…':'Finding homeroom students…');
+ const lookup=await getPeople();
+ if(!root){state.busy=false;return}
+ state.people=lookup.people;state.source=lookup.source;
+ if(!state.people.length){state.busy=false;status(t('none'));render();return}
+ if(!confirm(t('confirm',{n:state.people.length})+'\\n'+(cfg.lang==='fi'?'Lähde: ':'Source: ')+(lookup.source==='homeroom'?(cfg.lang==='fi'?'ohjausryhmän sivu':'homeroom page'):(cfg.lang==='fi'?'opiskelijavalikko (varamenetelmä)':'student dropdown (fallback)')))){state.busy=false;render();return}
+ let completed=0,failed=0,empty=0;
+ render();
+ for(let i=0;i<state.people.length;i++){
+  if(state.stop||!root)break;
+  const student=state.people[i];status(t('reading',{i:i+1,n:state.people.length}));
+  try{
+   const res=await fetch(student.url,{credentials:'same-origin',redirect:'follow',cache:'no-store'});
+   if(!res.ok||new URL(res.url).origin!==location.origin||!p.test(new URL(res.url).pathname))throw Error('Unexpected HTTP response');
+   const data=parse(await res.text(),student);
+   if(!data.length){empty++;state.errors.push('Student '+(i+1)+': 0 courses')}
+   else completed++;
+   state.rows.push(...data);
+  }catch(e){failed++;state.errors.push('Student '+(i+1)+': '+e.message)}
+  render();
+  if(i<state.people.length-1&&!state.stop)await new Promise(r=>setTimeout(r,650));
+ }
+ state.busy=false;
+ if(root){
+  const message=cfg.lang==='fi'?
+   'Lähde: '+(state.source==='homeroom'?'ohjausryhmän sivu':'opiskelijavalikko (varamenetelmä)')+'. Opiskelijoita '+state.people.length+', suoritustietoja löytyi '+completed+', tyhjiä '+empty+', epäonnistui '+failed+'. Suoritusrivejä '+state.rows.length+'.':
+   'Source: '+(state.source==='homeroom'?'homeroom page':'student dropdown (fallback)')+'. Students '+state.people.length+', with grades '+completed+', empty '+empty+', failed '+failed+'. Rows '+state.rows.length+'.';
+  status(message+(state.stop?' ('+t('stop')+')':''));
+  render();
+ }
+}
 function download(){const header=['Student','Course','Category','Subject','Grade','ECTS','Completion date','Teacher'];const cells=[header,...selected().map(r=>[r.student,r.name,r.group,r.subject,r.grade,r.ects,r.date,r.teacher])];const quote=v=>{let s=String(v??'');if(/^\s*[=+@\-\t\r]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"'};const csv='\ufeff'+cells.map(x=>x.map(quote).join(';')).join('\r\n');const u=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),a=el('a');a.href=u;a.download='wilmatools_progress.csv';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)}
 })();
