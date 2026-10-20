@@ -11,7 +11,7 @@ Asenna Tampermonkey ja haluamasi skriptit. Tietokoneella sivupaneeli ja varsinai
 | Työkalu | Versio | Asennus |
 | --- | --- | --- |
 | WilmaTools-sivupaneeli (tietokone) | 0.16.4 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/desktop-toolbar.user.js) |
-| Ryhmänohjaajan opintoseuranta | 0.16.1 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/WilmaTools.user.js) |
+| Ryhmänohjaajan opintoseuranta | 0.17.0 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/WilmaTools.user.js) |
 | Viestiluonnosten tallennus – Chrome tietokoneella | 0.7.0 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-chrome-desktop.user.js) |
 | Viestiluonnosten tallennus – Firefox Androidissa (kokeellinen) | 0.6.0 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-firefox-android.user.js) |
 
@@ -31,7 +31,7 @@ Ryhmäsivulla voi näkyä erottuva **WilmaTools · Arviointinäkymä** -välileh
 
 Avaa ohjausryhmän opiskelijan suoritussivu (esimerkiksi `/profiles/students/.../choices?view=gradebook`) ja käynnistä WilmaTools.
 
-Työkalu **löytää opiskelijoita automaattisesti** Wilman valikosta, hakee heidän suoritussivunsa saman palvelimen sisältä ja yhdistää tiedot yhteiseen taulukkoon. Opiskelijoita ei siis syötetä yksitellen. Avoinna oleva opiskelija yritetään ottaa mukaan, vaikka häntä ei olisi pudotusvalikossa. Tämä tiedonkeruu tapahtuu nykyisin opiskelijasivu kerrallaan. Suoraan ryhmätasolta tapahtuvaa arvosanojen hakua ei ole vielä toteutettu, sillä luotettavaa ryhmäkohtaista tietolähdettä ei ole vahvistettu.
+Työkalu **löytää opiskelijoita automaattisesti** Wilman valikosta, hakee heidän suoritussivunsa saman palvelimen sisältä ja yhdistää tiedot yhteiseen taulukkoon. Opiskelijoita ei siis syötetä yksitellen. **Versiosta 0.17.0 alkaen ensisijainen opiskelijaluettelo haetaan Wilman etusivun Ohjausryhmäsi-linkin kautta ryhmäsivulta.** Jos ryhmälinkki tai opiskelijalinkit eivät ole saatavilla haetusta HTML:stä, käytetään vanhaa opiskelijavalikkoa varamenetelmänä. Suoritukset haetaan edelleen opiskelijakohtaisesti. Keräyksen yhteenvedossa näkyvät opiskelijamäärä sekä onnistuneet, tyhjät ja epäonnistuneet haut. Avoinna oleva opiskelija yritetään ottaa mukaan, vaikka häntä ei olisi pudotusvalikossa. Tämä tiedonkeruu tapahtuu edelleen opiskelijasivu kerrallaan. Suoraan ryhmätasolta tapahtuvaa arvosanojen hakua ei ole vielä toteutettu, sillä luotettavaa ryhmäkohtaista tietolähdettä ei ole vahvistettu.
 
 Ominaisuudet:
 - Värikoodattu opintojaksomatriisi ja arvosanat.
