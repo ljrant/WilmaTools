@@ -151,7 +151,7 @@ function gradingLinks(doc){
  }return found;
 }
 function compactBlock(){const block=document.createElement('div');block.className='wt-inline-tools';block.style.cssText='margin:5px 0 4px;padding:6px 0;border-top:1px solid #dfe8ee;font:13px/1.5 system-ui';return block}
-async async function openHomeroomGrades(groupUrl){location.assign(groupUrl)}
+async function openHomeroomGrades(groupUrl){location.assign(groupUrl)}
 function improveHomeroomLayout(home,tools,groupUrl){
  if(home.dataset.wtLayout==='yes')return;
  const heading=[...home.querySelectorAll('h1,h2,h3,h4,h5,h6')].find(h=>txt(h.textContent)==='Ohjausryhmäsi');
