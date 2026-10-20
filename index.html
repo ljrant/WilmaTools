@@ -1,57 +1,57 @@
 <!doctype html>
-<html lang="fi">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>WilmaTools — Wilman apuvälineet</title>
+<html lang="fi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="WilmaTools – avoimen lähdekoodin opintoseuranta, viestipohjat ja selaintyökalut Wilmaan.">
+<title>WilmaTools – Wilman apuvälineet</title>
 <style>
-:root{font-family:system-ui,sans-serif;color:#19324a;background:#f5f8fc}
-*{box-sizing:border-box}body{margin:0}a{color:#125f9d}
-header{background:#fff;border-bottom:1px solid #d7e1ea;padding:22px 7%;display:flex;justify-content:space-between;align-items:center}
-.brand{font-size:1.4rem;font-weight:800}.brand span{color:#2476b2}
-main{max-width:1100px;margin:auto;padding:55px 25px}
-h1{font-size:clamp(2.3rem,5vw,4rem);letter-spacing:-.04em;line-height:1.1}
-.lead{font-size:1.15rem;max-width:680px;line-height:1.65;color:#4b6276}
-.hero{margin-bottom:65px}.btn{display:inline-block;background:#155d95;color:white;text-decoration:none;font-weight:700;border-radius:9px;padding:13px 20px;margin:8px 8px 8px 0}.btn.alt{color:#155d95;background:#fff;border:1px solid #bdcede}
-.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin:22px 0 60px}
-.card{padding:25px;background:#fff;border:1px solid #d7e1ea;border-radius:14px;line-height:1.55}.card p{color:#4b6276}
-.notice{background:#fff8df;border:1px solid #decf91;padding:18px;border-radius:10px}
-section{margin-bottom:55px}footer{border-top:1px solid #d7e1ea;padding:24px 7%;color:#607388}
+:root{font-family:system-ui,-apple-system,sans-serif;background:#f5f8fc;color:#19334a}*{box-sizing:border-box}body{margin:0}a{color:#12619b}
+header{padding:18px max(5%,calc((100vw - 1080px)/2));display:flex;justify-content:space-between;align-items:center;background:#fff;border-bottom:1px solid #d5e0ea}
+.brand{font-size:1.45rem;font-weight:800}.brand span{color:#1b76b1}.lang{display:flex;align-items:center;gap:8px}
+main{max-width:1080px;margin:auto;padding:48px 22px 55px}h1{font-size:clamp(2rem,5vw,3.4rem);line-height:1.13;letter-spacing:-.035em}h2{font-size:1.65rem;margin-top:0}h3{margin:0 0 10px}
+p,li{line-height:1.65}.lead{font-size:1.14rem;max-width:760px;color:#506579}.hero{margin-bottom:45px}
+.btn{display:inline-block;margin:7px 8px 7px 0;padding:12px 17px;background:#155d95;border-radius:8px;color:white;text-decoration:none;font-weight:700}
+.btn.alt{background:#fff;border:1px solid #afc6da;color:#155d95}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.card{background:white;padding:23px;border:1px solid #d3e0ea;border-radius:12px}.card p{color:#52687c;margin-bottom:0}
+section{margin-bottom:48px}.notice{background:#fff7e2;border:1px solid #decf9b;border-radius:10px;padding:16px 20px}
+.install{background:white;border:1px solid #d3e0ea;border-radius:12px;padding:23px}.install article{padding:10px 0;border-bottom:1px solid #e4eaf0}.install article:last-child{border:0}
+.version{font-size:.85rem;color:#576d7f}footer{padding:23px 6%;border-top:1px solid #d3e0ea;color:#596f82}
 #en{display:none}body:has(#english:checked) #en{display:block}body:has(#english:checked) #fi{display:none}
-.lang{display:flex;align-items:center;gap:8px}.lang input{accent-color:#155d95}
-@media(max-width:700px){.cards{grid-template-columns:1fr}}
-</style>
-</head>
-<body>
-<header><div class="brand">Wilma<span>Tools</span></div>
-<label class="lang" for="english"><input type="checkbox" id="english"> English</label></header>
+@media(max-width:760px){.cards{grid-template-columns:1fr}main{padding:32px 18px}header{padding:18px}}
+</style></head>
+<body><header><div class="brand">Wilma<span>Tools</span></div><label class="lang"><input type="checkbox" id="english"> English</label></header>
 <div id="fi"><main>
-<section class="hero"><p>AVOIMEN LÄHDEKOODIN SELAINTYÖKALUT</p><h1>Selkeämpi näkymä Wilman tietoihin.</h1>
-<p class="lead">WilmaTools on valinnaisten Wilma-apuvälineiden kokoelma. Ensimmäinen työkalu kokoaa ryhmänohjaajan opiskelijoiden opintosuoritukset yhteen näkymään.</p>
-<a class="btn" href="https://raw.githubusercontent.com/ljrant/WilmaTools/main/WilmaTools.user.js">Asenna Tampermonkeyyn</a>
-<a class="btn alt" href="https://github.com/ljrant/WilmaTools">Lähdekoodi GitHubissa</a></section>
-<section><h2>Ominaisuudet</h2><div class="cards">
-<article class="card"><h3>Opintosuoritusmatriisi</h3><p>Värikoodatut arvosanat, rivittyvät opintojaksojen otsikot ja erilaiset kurssivalinnat samassa taulukossa.</p></article>
-<article class="card"><h3>Lukuvuosi ja huomiot</h3><p>Automaattinen elokuu–heinäkuu-suodatus, mukautettu päivämääräväli ja huomiot arvosanoista 4, 5, 6, U ja K.</p></article>
-<article class="card"><h3>Paikallinen käsittely</h3><p>Opiskelijatiedot käsitellään omassa selainistunnossasi. Suoritukset voi viedä CSV-tiedostoon.</p></article>
+<section class="hero"><p>AVOIMEN LÄHDEKOODIN WILMA-TYÖKALUT</p><h1>Opintoseuranta ja viestityökalut samassa kokonaisuudessa.</h1>
+<p class="lead">WilmaTools lisää tietokoneen Wilmaan yhtenäisen sivupaneelin, ryhmänohjaajan arviointinäkymän sekä viestipohjien ja luonnosten hallinnan. Jokainen käyttäjäskripti voidaan ottaa käyttöön erikseen Tampermonkeyssa.</p>
+<a class="btn" href="https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/desktop-toolbar.user.js">Asenna sivupaneeli</a><a class="btn alt" href="https://github.com/ljrant/WilmaTools">GitHub ja README</a></section>
+<section><h2>Työkalut</h2><div class="cards">
+<article class="card"><h3>Ryhmänohjaajan arviointinäkymä</h3><p>Kerää opiskelijoiden suoritukset samaan matriisiin. Lukuvuosirajaukset, värikoodatut arvosanat, Huomiot-näkymä ja CSV-vienti.</p></article>
+<article class="card"><h3>Wilma-sivupaneeli</h3><p>Yhtenäinen käyttöliittymä eri Wilma-sivuilla. Ohjausryhmän pikalinkit, opiskelijalistan kopiointi ja ryhmien viestikuvakkeet.</p></article>
+<article class="card"><h3>Viestipohjat ja luonnokset</h3><p>Luo viestipohjia, valitse huomiota vaativia opiskelijoita ja hallitse viestiluonnosten paikallista tallennusta.</p></article>
 </div></section>
-<section><h2>Yhtenäinen työkalupalkki tietokoneelle</h2><p>Asenna WilmaTools-työkalupalkki, niin opintoseuranta ja Chrome-tietokoneversion viestiluonnosten tallennus löytyvät Wilman yläreunan oikealla puolella olevasta yhteisestä valikosta. Suomi on oletuskieli. Jokainen työkalu asennetaan erikseen ja voidaan ottaa käyttöön tai poistaa käytöstä Tampermonkeyssa.</p><p><a class="btn" href="https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/desktop-toolbar.user.js">Asenna työkalupalkki (tietokone)</a></p><p>Asenna lisäksi haluamasi varsinaiset työkalut. Pelkkä työkalupalkki ei tallenna viestejä eikä kerää opintotietoja.</p></section><section><h2>Viestiluonnosten automaattinen tallennus</h2><p>Valitse laitteellesi sopiva erillinen versio. <strong>Firefox Android on kokeellinen ja toimii vain Android-puhelimen Firefox-selaimessa.</strong> Chrome Desktop on tarkoitettu tietokoneen Chrome-selaimeen.</p><p>Asenna erillinen käyttäjäskripti laitteesi selaimelle. Luonnokset (myös vastaanottajat) säilytetään paikallisesti selaimen localStorage-muistissa. Tarkista vastaanottajat aina ennen lähettämistä ja poista tallenne lähettämisen jälkeen.</p><p><a class="btn" href="https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-firefox-android.user.js">Firefox Android — kokeellinen puhelinversio</a> <a href="firefox-android.html">Ohjeet ja rajoitukset</a><br><a class="btn alt" href="https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-chrome-desktop.user.js">Chrome Desktop — tietokoneversio</a></p></section>
-<section><h2>Yhtenäinen sivupaneeli tietokoneella</h2><p>WilmaTools-sivupaneeli näkyy kaikilla Wilman sivuilla, kun erillinen tietokoneen työkalupalkkiskripti on asennettu. Aloitussivulle lisätään pikavalinta viimeksi käytettyyn opiskelijan opintosuoritussivuun.</p><a class="btn alt" href="https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/desktop-toolbar.user.js">Asenna tietokoneen sivupaneeli</a></section><section><h2>Viestipohjat Huomiot-näkymässä</h2><p>Opintoseurannassa voi valita huomiota vaativan arvosanan saaneen opiskelijan, avata erillisen viestipohjaeditorin, esikatsella viestiä ja kopioida sen Wilman viestin kirjoitusta varten. Vastaanottajaa ei lisätä eikä viestiä lähetetä automaattisesti.</p></section><section><h2>Asennus</h2><ol><li>Asenna Tampermonkey.</li><li>Avaa WilmaTools.user.js yllä olevasta linkistä ja asenna käyttäjäskripti.</li><li>Avaa oman koulusi Wilman opiskelijan suoritussivu missä tahansa *.inschool.fi-osoitteessa ja valitse WilmaTools.</li></ol>
-<p class="notice">Tärkeää: Wilma voi ladata lisää kursseja Näytä kaikki -toiminnolla. Tämä versio lukee vain haetun HTML:n, joten tarkista tulosten kattavuus ennen käyttöä. Käytä vain opiskelijatietoja, joihin sinulla on oikeus.</p></section>
+<section><h2>Asennettavat moduulit</h2><div class="install">
+<article><h3>Sivupaneeli tietokoneelle <span class="version">v0.16.4</span></h3><p>Näkyy Wilma-sivuilla ja kokoaa käytössä olevat työkalut samaan valikkoon.</p><a class="btn" href="https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/desktop-toolbar.user.js">Asenna sivupaneeli</a></article>
+<article><h3>Ryhmänohjaajan opintoseuranta <span class="version">v0.16.1</span></h3><p>Opiskelijoita ei lisätä käsin: työkalu löytää heidät Wilman valikosta ja hakee nykyisin suoritussivut yksitellen.</p><a class="btn" href="https://raw.githubusercontent.com/ljrant/WilmaTools/main/WilmaTools.user.js">Asenna opintoseuranta</a></article>
+<article><h3>Viestiluonnosten tallennus – Chrome tietokoneella <span class="version">v0.7.0</span></h3><p>Viesti tallentuu paikallisesti. Sivupaneelista voi käyttää tallennus-, palautus- ja poistotoimintoja.</p><a class="btn alt" href="https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-chrome-desktop.user.js">Asenna Chrome-versio</a></article>
+<article><h3>Viestiluonnosten tallennus – Firefox Android <span class="version">v0.6.0 · kokeellinen</span></h3><p>Tarkoitettu vain Android-puhelimen Firefox-selaimeen. Vaatii toimivan käyttäjäskriptilaajennuksen.</p><a class="btn alt" href="firefox-android.html">Ohjeet Firefox Androidille</a><a href="https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-firefox-android.user.js">Suora asennuslinkki</a></article>
+</div></section>
+<section><h2>Viestit ja vastaanottajat</h2><p>Huomiot-näkymässä voi valita useita opiskelijoita, ottaa käyttöön tallennetun viestipohjan ja avata Wilman viestin kirjoituksen. <strong>Vastaanottajia ei vielä esivalita eikä viestejä lähetetä automaattisesti.</strong> Ryhmän viestikuvake toimii vain, jos Wilman oma vastaanottajat esivalitseva linkki löytyy.</p></section>
+<section><h2>Asennus ja tietosuoja</h2><ol><li>Asenna Tampermonkey.</li><li>Asenna sivupaneeli ja haluamasi työkalumoduulit yllä olevista linkeistä.</li><li>Kirjaudu Wilmaan ja avaa käyttämäsi työkalu. Tarkista tiedot ja vastaanottajat ennen käyttöä.</li></ol>
+<p class="notice">Arvosanat käsitellään paikallisesti selainistunnossa. Viestipohjat ja luonnokset voivat säilyä selaimen localStorage-muistissa ilman salausta. Wilma voi lisätä opintosuorituksia dynaamisesti ”Näytä kaikki” -toiminnolla, joten tarkista kerättyjen tietojen kattavuus. Käytä vain tietoja, joiden käsittelyyn sinulla on oikeus.</p></section>
 </main></div>
 <div id="en"><main>
-<section class="hero"><p>OPEN-SOURCE BROWSER TOOLS</p><h1>A clearer view of your Wilma data.</h1>
-<p class="lead">WilmaTools is a collection of optional browser utilities. Its first module brings homeroom students' course progress together into one overview.</p>
-<a class="btn" href="https://raw.githubusercontent.com/ljrant/WilmaTools/main/WilmaTools.user.js">Install with Tampermonkey</a>
-<a class="btn alt" href="https://github.com/ljrant/WilmaTools">Source on GitHub</a></section>
+<section class="hero"><p>OPEN-SOURCE WILMA BROWSER TOOLS</p><h1>Course progress and messaging tools in one place.</h1><p class="lead">WilmaTools provides a unified desktop sidebar, homeroom course progress, message templates and locally saved drafts. Each userscript can be enabled separately in Tampermonkey.</p><a class="btn" href="https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/desktop-toolbar.user.js">Install sidebar</a><a class="btn alt" href="https://github.com/ljrant/WilmaTools">GitHub source</a></section>
 <section><h2>Features</h2><div class="cards">
-<article class="card"><h3>Course matrix</h3><p>Colour-coded grades, wrapping course headings and different course selections in one overview.</p></article>
-<article class="card"><h3>School years and issues</h3><p>Automatic August–July periods, custom date ranges and a separate issues view for grades 4, 5, 6, U and K.</p></article>
-<article class="card"><h3>Local processing</h3><p>Student records remain in your authenticated browser session. Export selected course records as CSV.</p></article>
+<article class="card"><h3>Homeroom course progress</h3><p>Colour-coded course matrix, academic-year filters, issues view and CSV export.</p></article>
+<article class="card"><h3>Desktop sidebar</h3><p>Consistent tools across Wilma pages, homeroom shortcuts, student-list copying and group-message icons.</p></article>
+<article class="card"><h3>Templates and drafts</h3><p>Save message templates, select students with concerning grades and manage locally stored drafts.</p></article>
 </div></section>
-<section><h2>Unified desktop toolbar</h2><p>Install the WilmaTools toolbar for a shared menu near the top-right of Wilma. Finnish is the default, with English selectable. Course progress and Chrome desktop draft autosaving remain separate Tampermonkey scripts, each independently enabled or disabled in Tampermonkey.</p><p><a class="btn" href="https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/desktop-toolbar.user.js">Install desktop toolbar</a></p><p>Also install the tool modules you need. The toolbar alone does not collect grades or save drafts.</p></section><section><h2>Message draft autosaver</h2><p>Choose the version for your device. <strong>Firefox Android is experimental and intended only for Firefox on Android phones.</strong> Chrome Desktop is intended for Google Chrome on computers.</p><p>Install the separate userscript for your browser. Drafts, including recipient data, are saved in persistent local browser storage. Always verify recipients before sending and clear the saved draft after sending.</p><p><a class="btn" href="https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-firefox-android.user.js">Firefox Android — experimental phone version</a> <a href="firefox-android.html">Details and limitations</a><br><a class="btn alt" href="https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-chrome-desktop.user.js">Chrome Desktop — computer version</a></p></section>
-<section><h2>Unified desktop sidebar</h2><p>The optional desktop sidebar is available on all Wilma pages. The start page also includes a shortcut to the last visited student gradebook.</p><a class="btn alt" href="https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/desktop-toolbar.user.js">Install desktop sidebar</a></section><section><h2>Message templates in the Issues view</h2><p>Choose one flagged student, open a separate message editor, preview a template, and copy it for use in Wilma compose. The recipient must be selected manually; no message is sent automatically.</p></section><section><h2>Installation</h2><ol><li>Install Tampermonkey.</li><li>Open WilmaTools.user.js via the link above and install the userscript.</li><li>Open a student gradebook on any school subdomain of *.inschool.fi and choose WilmaTools.</li></ol>
-<p class="notice">Important: Wilma may dynamically add more courses through Show all. This version reads fetched HTML only; verify completeness before relying on reports. Access only records you are authorized to view.</p></section>
-</main></div>
-<footer>WilmaTools · <a href="https://github.com/ljrant/WilmaTools">GitHub</a> · Independent project, not an official Wilma service.</footer>
+<section><h2>Install modules</h2><div class="install">
+<article><h3>Desktop Sidebar <span class="version">v0.16.4</span></h3><p>Access compatible WilmaTools modules across desktop Wilma pages.</p><a class="btn" href="https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/desktop-toolbar.user.js">Install sidebar</a></article>
+<article><h3>Homeroom Course Progress <span class="version">v0.16.1</span></h3><p>Students are discovered automatically. Currently the tool fetches their individual gradebooks to build the matrix.</p><a class="btn" href="https://raw.githubusercontent.com/ljrant/WilmaTools/main/WilmaTools.user.js">Install course progress</a></article>
+<article><h3>Message Autosaver – Chrome desktop <span class="version">v0.7.0</span></h3><p>Local draft backup with save and restore controls accessible from the sidebar.</p><a class="btn alt" href="https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-chrome-desktop.user.js">Install Chrome version</a></article>
+<article><h3>Message Autosaver – Firefox Android <span class="version">v0.6.0 · experimental</span></h3><p>For Firefox on Android phones only, with a compatible userscript extension.</p><a class="btn alt" href="firefox-android.html">Firefox Android instructions</a><a href="https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-firefox-android.user.js">Direct install</a></article>
+</div></section>
+<section><h2>Message recipients</h2><p>The issues view supports selecting several students and a message template. <strong>Recipients are not automatically preselected and messages are never sent automatically.</strong> A group-message icon only works when Wilma exposes a suitable recipient-prefilled message link.</p></section>
+<section><h2>Privacy and installation</h2><ol><li>Install Tampermonkey.</li><li>Install the sidebar and whichever modules you need.</li><li>Open Wilma and verify the information and recipients before taking action.</li></ol>
+<p class="notice">Grades are processed in your browser session. Drafts and templates can persist unencrypted in localStorage. Wilma may load additional course rows dynamically, so verify completeness. Only use student information you are authorized to access.</p></section></main></div>
+<footer>WilmaTools · <a href="https://github.com/ljrant/WilmaTools">GitHub</a> · <span>Itsenäinen projekti / Independent project — ei Wilman virallinen palvelu.</span></footer>
 </body></html>
