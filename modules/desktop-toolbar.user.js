@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Desktop Sidebar
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.13.0
+// @version      0.13.1
 // @description  Finnish-first WilmaTools sidebar on every Wilma page
 // @match        https://*.inschool.fi/*
 // @grant        none
@@ -120,7 +120,7 @@ function improveHomeroomLayout(home,tools,groupUrl){
  const links=[...home.querySelectorAll('a[href]')].filter(a=>!a.closest('#wt-home-tools'));
  const attendance=links.find(a=>/\/attendance_edit\/?(?:\?|$)/.test(safePath(a)||'')||/^Tuntimerkinnät$/i.test(txt(a.textContent)));
  const extras=links.filter(a=>a!==attendance&&/viikoittain|viikottain|yhteenvetona/i.test(txt(a.textContent)));
- const layout=document.createElement('div');layout.id='wt-home-layout';layout.style.cssText='display:grid;grid-template-columns:minmax(0,1.5fr) minmax(210px,1fr);gap:16px;align-items:start;margin-top:10px';
+ const layout=document.createElement('div');layout.id='wt-home-layout';layout.style.cssText='display:grid!important;grid-template-columns:minmax(0,1.4fr) minmax(220px,1fr)!important;gap:16px;align-items:start;margin:10px 0;width:100%;box-sizing:border-box';
  const left=document.createElement('div');left.style.cssText='min-width:0;display:flex;flex-direction:column;gap:9px';
  const top=document.createElement('div');top.style.cssText='display:flex;flex-wrap:wrap;align-items:baseline;gap:10px';
  const classLine=classLink.closest('h6')||classLink.parentElement;
@@ -140,8 +140,11 @@ function improveHomeroomLayout(home,tools,groupUrl){
  if(classLine&&classLine!==heading&&classLine.parentElement)classLine.remove();
  tools.replaceChildren(layout);
  heading.insertAdjacentElement('afterend',tools);
+ // Use a predictable full-width grid regardless of Wilma's original block styles.
+ tools.style.display='block';tools.style.width='100%';
+ console.info('[WilmaTools] Homeroom two-column layout v0.13.1 applied');
  tools.style.cssText='border:0;margin:0;padding:0;font:13px/1.5 system-ui';
- const style=document.createElement('style');style.textContent='@media(max-width:600px){#wt-home-layout{grid-template-columns:1fr!important}#wt-home-layout>div:nth-child(2){border-left:0!important;border-top:1px solid #e2e8ed;padding:10px 0 0!important}}';home.append(style);
+ const style=document.createElement('style');style.textContent='@media(max-width:560px){#wt-home-layout{grid-template-columns:1fr!important}#wt-home-layout>div:nth-child(2){border-left:0!important;border-top:1px solid #e2e8ed;padding:10px 0 0!important}}';home.append(style);
  home.dataset.wtLayout='yes';
 }
 function swapDashboardSections(){
@@ -172,7 +175,10 @@ function attachHome(){
   messages.append(makeAction(lang==='fi'?'Viesti opiskelijoille':'Message students',()=>groupMessage(url,'students')));
   messages.append(makeAction(lang==='fi'?'Viesti huoltajille':'Message guardians',()=>groupMessage(url,'guardians')));
   messages.append(makeAction(lang==='fi'?'Viesti opiskelijoille ja huoltajille':'Message students and guardians',()=>groupMessage(url,'both')));
-  tools.append(messages);home.append(tools);improveHomeroomLayout(home,tools,url);
+  tools.append(messages);home.append(tools);
+ }
+ if(home&&classAnchor&&home.querySelector('#wt-home-tools')&&home.dataset.wtLayout!=='yes'){
+  improveHomeroomLayout(home,home.querySelector('#wt-home-tools'),safePath(classAnchor));
  }
  if(!period||period.dataset.wtCourseLinks==='yes')return;
  const courses=new Map();
