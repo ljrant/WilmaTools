@@ -15,6 +15,19 @@ The script supports **any school subdomain** under `https://*.inschool.fi` (for 
 
 Käyttäjäskripti toimii **kaikilla `*.inschool.fi`-aliverkkotunnuksilla** opiskelijan suoritussivulla. Tietoja haetaan vain avoinna olevan koulun palvelimelta, ei muiden koulujen palvelimilta.
 
+## Optional message autosaver / Valinnainen viestiluonnosten tallennus
+
+Two standalone Tampermonkey modules are available. **Install only the one appropriate to your browser** (you may have different installations on your phone and computer):
+
+- **Firefox on Android / Firefox Androidissa:** [Install userscript](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-firefox-android.user.js)
+- **Chrome on desktop / Chrome tietokoneella:** [Install userscript](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-chrome-desktop.user.js)
+
+Both operate only on `https://*.inschool.fi/messages/compose*` and save the message subject, rich-text body, and recipient snapshot into browser localStorage. They provide manual save, restore, refresh recipients, and clear controls, and offer restoration when the compose form is empty.
+
+**Privacy / Tietosuoja:** Drafts can contain sensitive personal data. localStorage is persistent, unencrypted browser storage, available to scripts running on the same school origin. Use a trusted device/browser profile and click **Clear** after the message is sent. Saving recipients and restoring recipient controls are based on the supplied original script; recipient restoration is not guaranteed to synchronize Wilma's UI state. **Always verify all recipients before sending.** No remote backup or synchronization is provided. The script does **not** automatically delete a saved draft after send.
+
+**Testing status:** Adapted from the supplied Firefox Mobile script. Browser-specific operation and compatibility with varying Wilma implementations have not been verified.
+
 ## Features / Ominaisuudet
 
 - FI default; EN available in Settings / Suomi oletuksena, englanti asetuksista
@@ -37,4 +50,4 @@ The userscript runs in an existing authenticated Wilma session, fetches same-ori
 
 ## Development
 
-Files: `WilmaTools.user.js` (Tampermonkey) and `index.html` (public landing page). Future tools can be added as individually enabled modules. No student data belongs in this repository.
+Files: `WilmaTools.user.js` (Tampermonkey) and `index.html` (public landing page). Additional browser-specific modules live in `modules/`; they are installed separately. Future tools can be added as independently installed or enabled modules. No student data belongs in this repository.
