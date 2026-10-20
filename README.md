@@ -15,6 +15,14 @@ The script supports **any school subdomain** under `https://*.inschool.fi` (for 
 
 Käyttäjäskripti toimii **kaikilla `*.inschool.fi`-aliverkkotunnuksilla** opiskelijan suoritussivulla. Tietoja haetaan vain avoinna olevan koulun palvelimelta, ei muiden koulujen palvelimilta.
 
+## Desktop toolbar / Tietokoneen työkalupalkki
+
+**[Install desktop toolbar / Asenna tietokoneen työkalupalkki](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/desktop-toolbar.user.js)**
+
+The toolbar adds a unified **WilmaTools** menu near the upper-right Wilma navigation area. Finnish is the default; switch to English in the menu. Each tool remains a **separate Tampermonkey userscript**, enabled/disabled independently from Tampermonkey. The menu opens the grade matrix on gradebook pages and the Chrome desktop autosaver on compose pages. Buttons for unrelated pages are disabled. Firefox Android uses its separate mobile UI.
+
+**Desktop installation / Asennus tietokoneella:** Install the toolbar **plus** whichever tool modules you want: `WilmaTools.user.js` for course progress, `modules/message-autosaver-chrome-desktop.user.js` for compose autosaving. Toolbar alone does not collect data or autosave drafts.
+
 ## Optional message autosaver / Valinnainen viestiluonnosten tallennus
 
 Two standalone Tampermonkey modules are available. **Install only the one appropriate to your browser** (you may have different installations on your phone and computer):
@@ -52,4 +60,4 @@ The userscript runs in an existing authenticated Wilma session, fetches same-ori
 
 ## Development
 
-Files: `WilmaTools.user.js` (Tampermonkey) and `index.html` (public landing page). Additional browser-specific modules live in `modules/`; they are installed separately. Future tools can be added as independently installed or enabled modules. No student data belongs in this repository.
+Files: `modules/desktop-toolbar.user.js` (shared desktop menu), `WilmaTools.user.js` (gradebook Tampermonkey module) and `index.html` (public landing page). Additional browser-specific modules live in `modules/`; they are installed separately. Future tools can be added as independently installed or enabled modules. No student data belongs in this repository.
