@@ -138,9 +138,10 @@ function improveHomeroomLayout(home,tools,groupUrl){
   attendance.style.cssText='font-weight:600;font-size:15px;display:inline-block';
   line.append(attendance);
   if(pending){
+    const pendingContainer=pending.parentElement;
     pending.style.cssText='display:inline-block;float:none!important;margin:0!important;font-size:12px!important;white-space:nowrap';
     line.append(pending);
-    const wrapper=line.closest('.pull-right');if(wrapper)wrapper.style.display='none';
+    if(pendingContainer&&pendingContainer.classList.contains('pull-right')){pendingContainer.style.display='none';const emptyRow=pendingContainer.parentElement;if(emptyRow&&emptyRow.matches('.margin-bottom.clearfix')&&!emptyRow.textContent.trim())emptyRow.style.display='none';}
   }
   right.append(line);
  }
