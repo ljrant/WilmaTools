@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.18.1
+// @version      0.18.2
 // @description  Local Wilma homeroom gradebook overview, FI/EN
 // @match        https://*.inschool.fi/profiles/classes/*
 // @grant        none
@@ -94,7 +94,7 @@ let root=null;const $=s=>root?.querySelector(s);const el=(tag,txt='',cls='')=>{c
 const style=document.createElement('style');style.textContent=`#wt-launch{position:fixed;right:16px;bottom:16px;z-index:2147483600;background:#17466f;color:white;padding:11px 16px;border:0;border-radius:9px;font-weight:700;cursor:pointer}#wt-screen{position:relative;width:100%;min-height:520px;background:transparent;font:14px system-ui,Arial;color:#17212b}#wt-panel{position:relative;display:flex;flex-direction:column;overflow:hidden;min-height:520px;max-height:82vh;border:1px solid #d4e0e8;border-radius:12px;background:#fff}#wt-header,#wt-toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid #ddd}#wt-header{background:#eef4fa}#wt-header strong{margin-right:auto;font-size:17px}#wt-panel button,#wt-panel select,#wt-panel input{font:inherit;padding:6px;border:1px solid #b6c3d1;border-radius:5px}#wt-status,#wt-note{padding:6px 16px;color:#4d5c69;font-size:12px}#wt-content{flex:1;overflow:auto;padding:10px 16px}#wt-content table{border-collapse:separate;border-spacing:0;font-size:12px}#wt-content th,#wt-content td{border:1px solid #d7dde2;padding:6px 8px;text-align:center}#wt-content th{position:sticky;top:0;z-index:2;background:#eaf0f6}#wt-content th:first-child,#wt-content td:first-child{position:sticky;left:0;z-index:3;text-align:left;min-width:145px;background:#fff}#wt-content th:first-child{z-index:4;background:#eaf0f6}.wt-heading{width:144px;min-width:144px;max-width:144px;white-space:normal;overflow-wrap:anywhere;word-break:normal;vertical-align:bottom;line-height:1.25;height:auto;min-height:65px;cursor:pointer}.wt-grade{font-weight:bold;min-width:38px}#wt-hide-list{max-height:145px;overflow:auto;padding:10px 18px;border-bottom:1px solid #ddd}#wt-hide-list label{display:block;margin:3px 0}#wt-content .wt-issues td{text-align:left}#wt-content .wt-issues .wt-grade{text-align:center}`;document.head.append(style);
 try{localStorage.setItem('wilmatools.lastGradebook',location.pathname+location.search)}catch{}
 let assessmentHost=null,assessmentLoaded=false,originalContent=[];
-function tabStrip(){return document.querySelector('ul.nav-tabs,.nav-tabs,[role="tablist"]')}
+function tabStrip(){return document.querySelector('ul.nav.nav-tabs.nav-tabs-primary')}
 function installAssessmentTab(){
  const tabs=tabStrip();
  if(!tabs||document.getElementById('wt-class-assessment-tab'))return;
@@ -105,7 +105,7 @@ function installAssessmentTab(){
  item.append(link);
  const links=[...tabs.querySelectorAll('a')];
  const support=links.find(a=>/Tuen tilastot|Support statistics/i.test(a.textContent));
- if(support){const li=support.closest('li');if(li&&li.parentElement===tabs)li.after(item);else tabs.append(item)}
+ if(support){const li=support.closest('li');const dropdown=li?.closest('li.dropdown');if(dropdown&&dropdown.parentElement===tabs)dropdown.after(item);else tabs.append(item)}
  else tabs.append(item);
  // Wilma's own tab navigation must restore native content.
  tabs.addEventListener('click',e=>{
@@ -126,7 +126,7 @@ function activateAssessment(){
   assessmentHost=el('section');assessmentHost.id='wt-assessment-host';
   assessmentHost.style.cssText='width:100%;margin:12px 0;min-height:460px';
   // Insert at the start of Wilma's content area, not in an overlay.
-  const wrapper=tabs.closest('.panel,.card,.box')||tabs.parentElement;
+  const wrapper=tabs.parentElement;
   wrapper.insertAdjacentElement('afterend',assessmentHost);
   originalContent=[...wrapper.parentElement.children].filter(n=>n!==wrapper&&n!==assessmentHost&&n.tagName!=='SCRIPT'&&n.tagName!=='STYLE');
  }
