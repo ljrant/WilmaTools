@@ -10,7 +10,7 @@ Asenna Tampermonkey ja haluamasi skriptit. Tietokoneella sivupaneeli ja varsinai
 
 | Työkalu | Versio | Asennus |
 | --- | --- | --- |
-| WilmaTools-sivupaneeli (tietokone) | 0.17.1 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/desktop-toolbar.user.js) |
+| WilmaTools-sivupaneeli (tietokone) | 0.17.2 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/desktop-toolbar.user.js) |
 | Ryhmänohjaajan opintoseuranta | 0.19.0 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/WilmaTools.user.js) |
 | Viestiluonnosten tallennus – Chrome tietokoneella | 0.7.0 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-chrome-desktop.user.js) |
 | Viestiluonnosten tallennus – Firefox Androidissa (kokeellinen) | 0.6.0 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-firefox-android.user.js) |
@@ -83,3 +83,5 @@ Arviointinäkymän versiossa **0.18.3** näkymä korvaa ryhmäsivun välilehtial
 **v0.19.0:** Opiskelijoiden suoritukset ladataan taustalla enintään viidellä rinnakkaisella pyynnöllä. Arviointimatriisi näytetään yhdellä kertaa valmistumisen jälkeen. Erillisiä keräys-, pysäytys- ja päivityspainikkeita tai lataus- ja virhelaskureita ei näytetä. Puuttuvia tietoja ei kuitenkaan korvata oletusarvoilla.
 
 **v0.19.0:** Ryhmäsivun välilehtirivillä ovat erilliset **Arviointinäkymä** ja **Huomiot**. Arviointinäkymän sisäiset päällekkäiset navigointi- ja keräyspainikkeet on poistettu. Matriisin **Opiskelija**-otsaketta painamalla voi järjestää opiskelijat aakkosittain nousevaan tai laskevaan järjestykseen. Lukuvuosi- ja muut suodattimet sekä CSV-vienti säilyvät.
+
+**Sivupaneeli v0.17.2:** WilmaTools-valikon avauspainike sijoitetaan Wilman tummansinisen otsakealueen oikeaan reunaan, mahdollisuuksien mukaan käyttäjä- ja koulutietojen sekä **Lähetä tapahtumakutsuja** -linkin alapuolelle. Painike pysyy paikallaan sivua vieritettäessä. Varsinainen työkalupaneeli avautuu edelleen painikkeesta.
