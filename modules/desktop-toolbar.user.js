@@ -120,17 +120,19 @@ function attachHome(){
   const href=safePath(a);
   if(!href||!/^\/(?:groups|profiles\/classes)\/\d+\/?$/.test(href))continue;
   const name=txt(a.textContent);if(!name||courses.has(href))continue;
-  courses.set(href,{name,href});
+  courses.set(href,{name,href,anchor:a});
  }
  if(!courses.size)return;
  const wrap=document.createElement('div');wrap.id='wt-course-links';wrap.style.cssText='border-top:1px solid #dfe8ee;padding-top:8px;margin-top:8px;font:13px/1.5 system-ui';
  for(const group of courses.values()){
   const row=document.createElement('div');row.style.cssText='padding:5px 0;border-bottom:1px solid #edf1f5';
-  // Use the course name itself as the link, not a separate "Avaa ryhmä" button.
-  const title=makeLink(group.name,group.href);title.style.fontWeight='600';row.append(title);
+  // Keep Wilma's existing course-name link. Only add compact actions below it.
+  const title=group.anchor;
+  title.style.fontWeight='600';
   const sub=document.createElement('div');sub.style.cssText='display:flex;gap:0;flex-wrap:wrap';
   sub.append(makeAction(lang==='fi'?'Viesti ryhmälle':'Message group',()=>groupMessage(group.href,'group')));
-  row.append(sub);wrap.append(row);
+  row.append(sub);const parent=title.closest('li')||title.parentElement;
+  if(parent&&parent!==period)parent.append(row);else wrap.append(row);
   // Fetch links automatically; no "show links" button.
   groupDoc(group.href).then(doc=>{
    if(!row.isConnected)return;
@@ -141,7 +143,7 @@ function attachHome(){
    sub.prepend(frag);
   }).catch(()=>{});
  }
- period.append(wrap);
+ if(wrap.childNodes.length)period.append(wrap);
 }
 if(['/', '/index','/dashboard','/home'].includes(location.pathname)){
  attachHome();
