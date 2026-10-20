@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Desktop Sidebar
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.14.0
+// @version      0.15.0
 // @description  Finnish-first WilmaTools sidebar on every Wilma page
 // @match        https://*.inschool.fi/*
 // @grant        none
@@ -125,8 +125,7 @@ function improveHomeroomLayout(home,tools,groupUrl){
  const left=document.createElement('div');left.style.cssText='min-width:0;display:flex;flex-direction:column;gap:6px';
  const top=document.createElement('div');top.style.cssText='display:flex;flex-wrap:wrap;align-items:baseline;gap:12px';
  const classLine=classLink.closest('h6')||classLink.parentElement;
- classLink.style.cssText='font-weight:700;font-size:16px';
- top.append(classLink);
+ classLink.style.cssText='font:600 18px/1.3 system-ui,sans-serif;color:#155d92;text-decoration:underline';
  const copy=tools.querySelector('button');if(copy)top.append(copy);
  left.append(top);
  const right=document.createElement('div');right.style.cssText='min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding-left:10px;border-left:1px solid #e2e8ed';
@@ -135,7 +134,8 @@ function improveHomeroomLayout(home,tools,groupUrl){
  right.append(grade);
  if(attendance){
   const line=document.createElement('div');line.style.cssText='display:flex;align-items:center;flex-wrap:wrap;gap:8px;width:100%';
-  attendance.style.cssText='font-weight:600;font-size:15px;display:inline-block';
+  attendance.style.cssText='font-weight:600;font-size:15px;display:inline-flex;align-items:center;gap:5px';
+  const ico=label('span','▤');ico.setAttribute('aria-hidden','true');ico.style.cssText='font:18px/1 system-ui;color:#155d92;text-decoration:none';attendance.prepend(ico);
   line.append(attendance);
   if(pending){
     const pendingContainer=pending.parentElement;
@@ -150,31 +150,17 @@ function improveHomeroomLayout(home,tools,groupUrl){
  layout.append(left,right);
  // Remove empty wrappers from Wilma's original layout after moving their links.
  if(classLine&&classLine!==heading&&classLine.parentElement)classLine.remove();
+ heading.style.cssText='display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:5px';
+ heading.append(classLink);
  tools.replaceChildren(layout);
  heading.insertAdjacentElement('afterend',tools);
  // Use a predictable full-width grid regardless of Wilma's original block styles.
  tools.style.display='block';tools.style.width='100%';
- console.info('[WilmaTools] Homeroom two-column layout v0.14.0 applied');
+ console.info('[WilmaTools] Homeroom two-column layout v0.15.0 applied');
  tools.style.cssText='border:0;margin:0;padding:0;font:15px/1.4 system-ui';
  for(const a of tools.querySelectorAll('button,a')){if(!a.classList.contains('badge')){a.style.fontSize='15px';a.style.lineHeight='1.4'}}
- const style=document.createElement('style');style.textContent='@media(max-width:560px){#wt-home-layout{grid-template-columns:1fr!important}#wt-home-layout>div:nth-child(2){border-left:0!important;border-top:1px solid #e2e8ed;padding:10px 0 0!important}}';home.append(style);
+ const style=document.createElement('style');style.textContent='#wt-home-tools button,#wt-home-tools a:not(.badge),#wt-course-links button,#wt-course-links a{font-family:system-ui,sans-serif!important;font-size:15px!important;line-height:1.45!important}#wt-course-links{font:15px/1.45 system-ui,sans-serif!important}#wt-home-tools .badge{font-size:12px!important}@media(max-width:560px){#wt-home-layout{grid-template-columns:1fr!important}#wt-home-layout>div:nth-child(2){border-left:0!important;border-top:1px solid #e2e8ed;padding:10px 0 0!important}}';home.append(style);
  home.dataset.wtLayout='yes';
-}
-function swapDashboardSections(){
- const groups=getSection('Ryhmät tässä jaksossa'),alerts=getSection('Ilmoitukset');
- if(!groups||!alerts||groups===alerts)return;
- const hasTitle=(node,title)=>[...node.querySelectorAll('h1,h2,h3,h4,h5,h6')].some(h=>txt(h.textContent)===title);
- // Only reorder separately wrapped dashboard blocks sharing a parent.
- for(let g=groups;g&&g!==document.body;g=g.parentElement){
-  if(!hasTitle(g,'Ryhmät tässä jaksossa')||hasTitle(g,'Ilmoitukset'))continue;
-  for(let a=alerts;a&&a!==document.body;a=a.parentElement){
-   if(!hasTitle(a,'Ilmoitukset')||hasTitle(a,'Ryhmät tässä jaksossa'))continue;
-   if(a.parentElement&&a.parentElement===g.parentElement){
-    if(g.compareDocumentPosition(a)&Node.DOCUMENT_POSITION_PRECEDING)a.before(g);
-    return;
-   }
-  }
- }
 }
 function attachHome(){
  const home=getSection('Ohjausryhmäsi'),period=getSection('Ryhmät tässä jaksossa');
@@ -226,9 +212,9 @@ function attachHome(){
  if(wrap.childNodes.length)period.append(wrap);
 }
 if(['/', '/index','/dashboard','/home'].includes(location.pathname)){
- attachHome();swapDashboardSections();
+ attachHome();
  // Wilma can render the homepage blocks after DOMContentLoaded.
  let tries=0;
- const interval=setInterval(()=>{attachHome();swapDashboardSections();if(++tries>=12)clearInterval(interval)},1000);
+ const interval=setInterval(()=>{attachHome();if(++tries>=12)clearInterval(interval)},1000);
 }
 })();
