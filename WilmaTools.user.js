@@ -95,7 +95,7 @@ function openMessageEditor(available){
   const hint=el('p',cfg.lang==='fi'?'Muuttujat: {etunimi} (opiskelijan etunimi). Sisältö tallennetaan vain tämän välilehden muistiin.':'Variable: {etunimi} (student first name). Text is kept in this tab only.');
   card.append(hint);
   const preview=el('pre');preview.style.cssText='white-space:pre-wrap;background:#f2f6f9;border:1px solid #d9e1e8;padding:12px;border-radius:6px;max-height:200px;overflow:auto';
-  const build=()=>subject.value+'\\n\\n'+body.value.replaceAll('{etunimi}',person.name.split(/\\s+/)[0]).replaceAll('{name}',person.name.split(/\\s+/)[0]);
+  const build=()=>subject.value+'\n\n'+body.value.replaceAll('{etunimi}',person.name.split(/\s+/)[0]).replaceAll('{name}',person.name.split(/\s+/)[0]);
   const update=()=>{preview.textContent=build()};subject.oninput=update;body.oninput=update;update();
   card.append(el('h3',cfg.lang==='fi'?'Esikatselu':'Preview'),preview);
   const actions=el('div');actions.style.cssText='display:flex;flex-wrap:wrap;gap:9px;margin-top:14px';
