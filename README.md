@@ -11,7 +11,7 @@ Asenna Tampermonkey ja haluamasi skriptit. Tietokoneella sivupaneeli ja varsinai
 | Työkalu | Versio | Asennus |
 | --- | --- | --- |
 | WilmaTools-sivupaneeli (tietokone) | 0.17.1 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/desktop-toolbar.user.js) |
-| Ryhmänohjaajan opintoseuranta | 0.18.5 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/WilmaTools.user.js) |
+| Ryhmänohjaajan opintoseuranta | 0.19.0 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/WilmaTools.user.js) |
 | Viestiluonnosten tallennus – Chrome tietokoneella | 0.7.0 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-chrome-desktop.user.js) |
 | Viestiluonnosten tallennus – Firefox Androidissa (kokeellinen) | 0.6.0 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-firefox-android.user.js) |
 
@@ -72,12 +72,14 @@ Lähdekoodi: https://github.com/ljrant/WilmaTools
 
 **Huomautus:** Kaikkia toimintoja ei ole vielä vahvistettu eri koulujen Wilma-käyttöliittymissä. Testaa etenkin ryhmäsivun linkit, opiskelijamäärä ja vastaanottajavalinta ennen varsinaista käyttöä.
 
-## Arviointinäkymän integrointi (v0.18.5)
+## Arviointinäkymän integrointi (v0.19.0)
 
 Ryhmäsivulle lisätään **Arviointinäkymä** Wilman omaan välilehtiriviin mahdollisuuksien mukaan **Tuen tilastot** -välilehden jälkeen. Arviointitaulukko näkyy samalla sivulla; muihin välilehtiin siirtyminen palauttaa Wilman alkuperäisen sisällön. Sivupaneelista poistettiin erillinen arviointipikavalinta. Opiskelijoiden suoritussivujen haussa ei ole keinotekoista odotusta: käytössä on enintään viisi rinnakkaista pyyntöä. Käyttöliittymäintegraatio on testattava koulun Wilma-versiossa.
 
 Arviointinäkymän versiossa **0.18.3** näkymä korvaa ryhmäsivun välilehtialueen muun sisällön sen sijaan, että se lisättäisiin sivun loppuun. Wilman alkuperäinen välilehtisisältö palautetaan muihin välilehtiin siirryttäessä. Käyttöliittymää on testattava oikeassa Wilma-ympäristössä.
 
-**v0.18.5:** Arviointinäkymä-välilehti lisätään myös ryhmän alisivuille, jos niillä näkyy sama Wilman välilehtipalkki. Alisivun välilehtilinkki avaa saman ryhmän pääsivun arviointinäkymän automaattisesti.
+**v0.19.0:** Arviointinäkymä-välilehti lisätään myös ryhmän alisivuille, jos niillä näkyy sama Wilman välilehtipalkki. Alisivun välilehtilinkki avaa saman ryhmän pääsivun arviointinäkymän automaattisesti.
 
-**v0.18.5:** Opiskelijoiden suoritukset ladataan taustalla enintään viidellä rinnakkaisella pyynnöllä. Arviointimatriisi näytetään yhdellä kertaa valmistumisen jälkeen. Erillisiä keräys-, pysäytys- ja päivityspainikkeita tai lataus- ja virhelaskureita ei näytetä. Puuttuvia tietoja ei kuitenkaan korvata oletusarvoilla.
+**v0.19.0:** Opiskelijoiden suoritukset ladataan taustalla enintään viidellä rinnakkaisella pyynnöllä. Arviointimatriisi näytetään yhdellä kertaa valmistumisen jälkeen. Erillisiä keräys-, pysäytys- ja päivityspainikkeita tai lataus- ja virhelaskureita ei näytetä. Puuttuvia tietoja ei kuitenkaan korvata oletusarvoilla.
+
+**v0.19.0:** Ryhmäsivun välilehtirivillä ovat erilliset **Arviointinäkymä** ja **Huomiot**. Arviointinäkymän sisäiset päällekkäiset navigointi- ja keräyspainikkeet on poistettu. Matriisin **Opiskelija**-otsaketta painamalla voi järjestää opiskelijat aakkosittain nousevaan tai laskevaan järjestykseen. Lukuvuosi- ja muut suodattimet sekä CSV-vienti säilyvät.
