@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.9.0
+// @version      0.16.0
 // @description  Local Wilma homeroom gradebook overview, FI/EN
 // @match        https://*.inschool.fi/profiles/students/*/choices*
 // @grant        none
@@ -108,16 +108,29 @@ function openMessageEditor(available){
   overlay.addEventListener('click',e=>{if(e.target===overlay)close()});
 }
 function render(){if(!root)return;$('#wt-stop').disabled=!state.busy;$('#wt-collect').disabled=state.busy||!cfg.enabled;$('#wt-export').disabled=!state.rows.length;$('#wt-matrix').disabled=state.mode==='matrix';$('#wt-issues').disabled=state.mode==='issues';renderHide();const box=$('#wt-content');box.replaceChildren();if(!cfg.enabled||!state.rows.length){box.append(el('p',t('none')));return}const rows=selected();if(state.mode==='issues'){const flagged=rows.filter(r=>flag(r.grade));box.append(el('p',t('found',{n:new Set(flagged.map(x=>x.id)).size,c:new Set(flagged.map(x=>x.key)).size,r:flagged.length})));const unique=[...new Map(flagged.map(r=>[r.id,{id:r.id,name:r.student}])).values()];
-const msgbox=el('section');
-msgbox.style.cssText='max-width:700px;background:#f3f7fb;padding:14px;border:1px solid #cbd9e5;border-radius:9px;margin:12px 0;';
-msgbox.append(el('h3',mt('heading')));
-msgbox.append(el('p',cfg.lang==='fi'?'Valitse opiskelija ja avaa erillinen viestipohjan muokkaus.':'Select a student and open the dedicated message editor.'));
-const picks=el('div');picks.style.cssText='max-height:165px;overflow:auto;border:1px solid #d2dce5;background:#fff;padding:8px;margin:10px 0;border-radius:6px';
-for(const person of unique){const label=el('label');label.style.cssText='display:block;padding:5px';const cb=el('input');cb.type='radio';cb.name='wt-message-student';cb.checked=state.messageStudentIds.has(person.id);cb.onchange=()=>{state.messageStudentIds.clear();state.messageStudentIds.add(person.id)};label.append(cb,document.createTextNode(' '+person.name));picks.append(label)}
-msgbox.append(picks);
-const editButton=el('button',cfg.lang==='fi'?'Muokkaa viestipohjaa':'Edit message template');
-editButton.type='button';editButton.onclick=()=>openMessageEditor(unique);
-msgbox.append(editButton);box.append(msgbox);
+const msgbox=el('section');msgbox.style.cssText='max-width:760px;border:1px solid #cedde9;border-radius:9px;background:#f5f9fc;padding:12px;margin:10px 0;font:14px/1.45 system-ui';
+msgbox.append(el('h3',cfg.lang==='fi'?'Viestit huomiota vaativille opiskelijoille':'Message students with concerning grades'));
+const help=el('p',cfg.lang==='fi'?'Valitse opiskelijat ja tallennettu viestipohja. Vastaanottajat valitaan ja tarkistetaan Wilmassa ennen lähettämistä.':'Select students and a saved template. Recipients must be selected and verified in Wilma before sending.');msgbox.append(help);
+const picks=el('div');picks.style.cssText='max-height:160px;overflow:auto;border:1px solid #d2dce5;background:#fff;border-radius:5px;padding:6px;margin-bottom:10px';
+for(const person of unique){const item=el('label');item.style.cssText='display:inline-block;margin:5px 15px 5px 0';const cb=el('input');cb.type='checkbox';cb.checked=state.messageStudentIds.has(person.id);cb.onchange=()=>{if(cb.checked)state.messageStudentIds.add(person.id);else state.messageStudentIds.delete(person.id)};item.append(cb,document.createTextNode(' '+person.name));picks.append(item)}msgbox.append(picks);
+const templateRow=el('div');templateRow.style.cssText='display:flex;flex-wrap:wrap;gap:8px;align-items:center';
+const templateSelect=el('select');templateSelect.style.cssText='min-width:180px;max-width:100%;padding:7px';
+const options=[{title:cfg.lang==='fi'?'Oletusviesti':'Default message',subject:mt('sampleSubject'),body:mt('sampleBody')}];
+try{const saved=JSON.parse(localStorage.getItem('wilmatools.messageTemplates.v1')||'[]');if(Array.isArray(saved))for(const item of saved){if(typeof item?.title==='string'&&typeof item.subject==='string'&&typeof item.body==='string')options.push(item)}}catch{}
+for(const [i,opt]of options.entries()){const o=el('option',opt.title);o.value=i;templateSelect.append(o)}
+templateRow.append(templateSelect);
+const go=el('button',cfg.lang==='fi'?'Valmistele Wilma-viesti':'Prepare Wilma message');go.onclick=async()=>{
+ const people=unique.filter(p=>state.messageStudentIds.has(p.id));if(!people.length){alert(mt('empty'));return}
+ const chosen=options[+templateSelect.value]||options[0];
+ const body=people.length===1?chosen.body.replaceAll('{etunimi}',people[0].name.split(/\s+/)[0]).replaceAll('{name}',people[0].name.split(/\s+/)[0]):chosen.body.replaceAll('{etunimi}',cfg.lang==='fi'?'opiskelija':'student').replaceAll('{name}',cfg.lang==='fi'?'opiskelija':'student');
+ const draft=chosen.subject+'\n\n'+body;
+ try{await navigator.clipboard.writeText(draft)}catch{prompt(mt('noClipboard'),draft);return}
+ const list=people.map(p=>p.name).join('\n');
+ alert((cfg.lang==='fi'?'Viestiteksti kopioitu. Valitse Wilmassa nämä vastaanottajat ja tarkista valinta ennen lähettämistä:\n':'Message copied. Select and verify these recipients in Wilma before sending:\n')+list);
+ window.open(location.origin+'/messages/compose','_blank','noopener');
+};templateRow.append(go);
+const editor=el('button',cfg.lang==='fi'?'Muokkaa viestipohjia sivupaneelissa':'Manage templates in sidebar');editor.onclick=()=>window.dispatchEvent(new Event('wilmatools:open-templates'));templateRow.append(editor);
+msgbox.append(templateRow);box.append(msgbox);
 const table=el('table');table.className='wt-issues';const h=el('tr');for(const v of ['student','course','grade','issue'])h.append(el('th',t(v)));table.append(h);flagged.sort((a,b)=>a.student.localeCompare(b.student,'fi')||a.name.localeCompare(b.name,'fi'));for(const r of flagged){const tr=el('tr');tr.append(el('td',r.student),el('td',r.name));const g=el('td',r.grade,'wt-grade'),[bg,fg]=color(r.grade,true);g.style.background=bg;g.style.color=fg;tr.append(g,el('td',t(flag(r.grade))));table.append(tr)}box.append(table);return}
 const cols=[...new Map(rows.map(r=>[r.key,r.name])).entries()].sort((a,b)=>a[1].localeCompare(b[1],'fi'));const by=new Map();for(const r of rows){if(!by.has(r.id))by.set(r.id,new Map());by.get(r.id).set(r.key,r)}const people=state.people.filter(s=>by.has(s.id));if(state.sort)people.sort((a,b)=>(by.get(a.id)?.get(state.sort)?.grade||'').localeCompare(by.get(b.id)?.get(state.sort)?.grade||'','fi',{numeric:true}));box.append(el('p',t('found',{n:people.length,c:cols.length,r:rows.length})));const table=el('table'),head=el('thead'),hr=el('tr');hr.append(el('th',t('student')));for(const [key,name]of cols){const th=el('th',name,'wt-heading');th.title=key.replaceAll('\u001f',' / ');th.tabIndex=0;th.onclick=()=>{state.sort=key;render()};th.onkeydown=e=>{if(e.key==='Enter'){state.sort=key;render()}};hr.append(th)}head.append(hr);table.append(head);const body=el('tbody');for(const s of people){const tr=el('tr');tr.append(el('td',s.name));for(const [key]of cols){const r=by.get(s.id)?.get(key),td=el('td',r?(r.grade||'…'):'—','wt-grade'),[bg,fg]=color(r?.grade||'',!!r);td.style.background=bg;td.style.color=fg;td.title=r?r.name+' | ECTS: '+r.ects:t('missing');tr.append(td)}body.append(tr)}table.append(body);box.append(table)}
 async function collect(){state.people=discover();if(!state.people.length)return status(t('none'));if(!confirm(t('confirm',{n:state.people.length})))return;state.busy=true;state.stop=false;state.rows=[];state.errors=[];render();for(let i=0;i<state.people.length;i++){if(state.stop||!root)break;const s=state.people[i];status(t('reading',{i:i+1,n:state.people.length}));try{const res=await fetch(s.url,{credentials:'same-origin',redirect:'follow',cache:'no-store'});if(!res.ok||new URL(res.url).origin!==location.origin||!p.test(new URL(res.url).pathname))throw Error('Unexpected HTTP response');const data=parse(await res.text(),s);if(!data.length)state.errors.push('Student '+(i+1)+': 0 courses');state.rows.push(...data)}catch(e){state.errors.push('Student '+(i+1)+': '+e.message)}render();if(i<state.people.length-1&&!state.stop)await new Promise(r=>setTimeout(r,650))}state.busy=false;if(root){status(t('finished',{n:state.rows.length,e:state.errors.length}));render()}}
