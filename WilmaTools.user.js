@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.18.3
+// @version      0.18.4
 // @description  Local Wilma homeroom gradebook overview, FI/EN
 // @match        https://*.inschool.fi/profiles/classes/*
 // @grant        none
@@ -9,7 +9,10 @@
 // ==/UserScript==
 (() => {
 'use strict';
-if(!/^\/profiles\/classes\/\d+\/?$/.test(location.pathname)||window.__wilmatools04)return;window.__wilmatools04=true;
+const classRoute=location.pathname.match(/^\/profiles\/classes\/(\d+)(?:\/|$)/);
+if(!classRoute||window.__wilmatools04)return;window.__wilmatools04=true;
+const classBase='/profiles/classes/'+classRoute[1];
+const onClassMain=location.pathname.replace(/\/$/,'')===classBase;
 const T={fi:{launch:'WilmaTools',title:'WilmaTools – Ryhmänohjaajan opintoseuranta',collect:'Kerää ryhmän tiedot',stop:'Pysäytä',close:'Sulje',matrix:'Opintojaksot',issues:'Huomiot',settings:'Asetukset',language:'Kieli',enabled:'Opintoseuranta käytössä',school:'Lukuvuosi',custom:'Oma aikaväli',all:'Kaikki päivämäärät',from:'Alkaen',to:'Päättyen',search:'Hae opiskelijaa tai opintojaksoa',hide:'Piilota opintojaksoja',export:'Vie CSV',student:'Opiskelija',course:'Opintojakso',grade:'Arvosana',issue:'Huomio',critical:'Vakava',low:'Alle 7',ready:'Opiskelijalinkkejä löytyi: {n}. Varmista, että ryhmä on oikea.',confirm:'Kerätäänkö {n} opiskelijan suoritukset? Tiedot pysyvät selaimessa.',reading:'Haetaan {i}/{n}…',finished:'Valmis: {n} suoritusta, {e} varoitusta. Vertaa tuloksia Wilman laajennettuun näkymään.',none:'Ei tietoja valitulla aikavälillä.',missing:'Ei merkintää',dateNote:'Päivämäärättömät suoritukset näkyvät vain Kaikki päivämäärät -valinnalla.',warning:'Huom. Näytä kaikki saattaa lisätä rivejä JavaScriptillä. Tarkista kattavuus ennen käyttöä.',found:'{n} opiskelijaa, {c} opintojaksoa, {r} suoritusta.',hideNote:'Poista valinta piilottaaksesi opintojakson.',settingsHelp:'Asetukset tallentuvat tähän selaimeen.'},
 en:{launch:'WilmaTools',title:'WilmaTools – Homeroom course progress',collect:'Collect class',stop:'Stop',close:'Close',matrix:'Course matrix',issues:'Students with issues',settings:'Settings',language:'Language',enabled:'Enable progress module',school:'School year',custom:'Custom dates',all:'All dates',from:'From',to:'To',search:'Search student or course',hide:'Hide courses',export:'Export CSV',student:'Student',course:'Course',grade:'Grade',issue:'Issue',critical:'Critical',low:'Below 7',ready:'Found {n} student links. Verify the class.',confirm:'Collect records for {n} students? Data remains in your browser.',reading:'Reading {i}/{n}…',finished:'Finished: {n} records, {e} warnings. Compare with the expanded Wilma page.',none:'No records in this period.',missing:'No record',dateNote:'Undated records appear only under All dates.',warning:'Note: Show all may dynamically load extra rows. Verify completeness before using.',found:'{n} students, {c} courses, {r} records.',hideNote:'Uncheck to hide a course.',settingsHelp:'Settings are saved in this browser.'}};
 const t=(k,v={})=>(T[cfg.lang][k]||k).replace(/\{(\w+)\}/g,(_,x)=>v[x]??'');
@@ -100,15 +103,15 @@ function installAssessmentTab(){
  if(!tabs||document.getElementById('wt-class-assessment-tab'))return;
  const item=document.createElement('li');item.id='wt-class-assessment-tab';
  const link=el('a',cfg.lang==='fi'?'Arviointinäkymä':'Grade overview');
- link.href='#wt-assessment';link.style.cssText='display:block;padding:10px 14px;background:#e7f3ff;color:#155b91;font-weight:700;border:1px solid #9fc6e5;border-radius:6px 6px 0 0';
- link.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();activateAssessment()});
+ link.href=classBase+'#wt-assessment';link.style.cssText='display:block;padding:10px 14px;background:#e7f3ff;color:#155b91;font-weight:700;border:1px solid #9fc6e5;border-radius:6px 6px 0 0';
+ link.addEventListener('click',e=>{if(!onClassMain)return;e.preventDefault();e.stopPropagation();activateAssessment()});
  item.append(link);
  const support=[...tabs.querySelectorAll('a')].find(a=>/Tuen tilastot|Support statistics/i.test(a.textContent));
  if(support){
   const dropdown=support.closest('li.dropdown');
   if(dropdown&&dropdown.parentElement===tabs)dropdown.after(item);else tabs.append(item);
  }else tabs.append(item);
- tabs.addEventListener('click',e=>{if(!e.target.closest('#wt-class-assessment-tab'))restoreNativeContent()},true);
+ if(onClassMain)tabs.addEventListener('click',e=>{if(!e.target.closest('#wt-class-assessment-tab'))restoreNativeContent()},true);
 }
 function restoreNativeContent(){
  if(!assessmentHost)return;
@@ -117,6 +120,7 @@ function restoreNativeContent(){
  document.getElementById('wt-class-assessment-tab')?.classList.remove('active');
 }
 function activateAssessment(){
+ if(!onClassMain){location.assign(classBase+'#wt-assessment');return}
  installAssessmentTab();
  const tabs=tabStrip();if(!tabs)return;
  if(!assessmentHost){
@@ -143,7 +147,11 @@ function activateAssessment(){
  if(!assessmentLoaded){assessmentLoaded=true;collect()}
 }
 installAssessmentTab();
-let tabTries=0;const tabTimer=setInterval(()=>{installAssessmentTab();if(++tabTries>=12)clearInterval(tabTimer)},700);
+let tabTries=0;const tabTimer=setInterval(()=>{
+ installAssessmentTab();
+ if(onClassMain&&location.hash==='#wt-assessment'&&document.getElementById('wt-class-assessment-tab')&&!assessmentLoaded)activateAssessment();
+ if(++tabTries>=12)clearInterval(tabTimer)
+},700);
 function status(x){if($('#wt-status'))$('#wt-status').textContent=x}
 function open(){state.people=[];root=el('div');root.id='wt-screen';root.innerHTML=`<div id="wt-panel" role="region" aria-label="WilmaTools"><div id="wt-header"><strong id="wt-title"></strong><button id="wt-collect"></button><button id="wt-stop"></button><button id="wt-matrix"></button><button id="wt-issues"></button><button id="wt-settings"></button><button id="wt-close"></button></div><div id="wt-toolbar"><label><select id="wt-period"><option value="school"></option><option value="custom"></option><option value="all"></option></select></label><label id="wt-year-label"><select id="wt-year"></select></label><label id="wt-from-label" hidden><span id="wt-from-caption"></span> <input id="wt-from" type="date"></label><label id="wt-to-label" hidden><span id="wt-to-caption"></span> <input id="wt-to" type="date"></label><input id="wt-search" type="search"><button id="wt-hide"></button><button id="wt-export"></button></div><div id="wt-settingsbox" hidden style="padding:10px 16px"><label id="wt-lang-label"></label> <select id="wt-lang"><option value="fi">Suomi</option><option value="en">English</option></select> <label><input id="wt-enabled" type="checkbox"> <span id="wt-enabled-label"></span></label></div><div id="wt-hide-list" hidden></div><div id="wt-status"></div><div id="wt-note"></div><div id="wt-content"></div></div>`;assessmentHost.append(root);for(let y=sy()-7;y<=sy()+2;y++){const op=el('option',y+'–'+(y+1));op.value=y;$('#wt-year').append(op)}$('#wt-year').value=state.year;$('#wt-period').value=state.period;$('#wt-lang').value=cfg.lang;$('#wt-enabled').checked=cfg.enabled;$('#wt-search').value=state.term;$('#wt-from').value=state.from;$('#wt-to').value=state.to;$('#wt-close').onclick=restoreNativeContent;$('#wt-collect').onclick=collect;$('#wt-stop').onclick=()=>{state.stop=true};$('#wt-matrix').onclick=()=>{state.mode='matrix';render()};$('#wt-issues').onclick=()=>{state.mode='issues';render()};$('#wt-settings').onclick=()=>{$('#wt-settingsbox').hidden=!$('#wt-settingsbox').hidden};$('#wt-hide').onclick=()=>{$('#wt-hide-list').hidden=!$('#wt-hide-list').hidden};$('#wt-lang').onchange=e=>{cfg.lang=e.target.value;save();translate();render()};$('#wt-enabled').onchange=e=>{cfg.enabled=e.target.checked;save();translate();render()};$('#wt-period').onchange=e=>{state.period=e.target.value;dateUI();render()};$('#wt-year').onchange=e=>{state.year=+e.target.value;render()};$('#wt-from').onchange=e=>{state.from=e.target.value;render()};$('#wt-to').onchange=e=>{state.to=e.target.value;render()};$('#wt-search').oninput=e=>{state.term=e.target.value;render()};$('#wt-export').onclick=download;translate();status(cfg.lang==='fi'?'Valmis hakemaan ryhmän tiedot.':'Ready to load group data.');render()}
 function translate(){$('#wt-title').textContent=t('title');for(const [id,key] of [['collect','collect'],['stop','stop'],['matrix','matrix'],['issues','issues'],['settings','settings'],['close','close'],['hide','hide'],['export','export']])$('#wt-'+id).textContent=t(key);for(const [i,k] of [['school','school'],['custom','custom'],['all','all']])$('#wt-period').querySelector('[value="'+i+'"]').textContent=t(k);$('#wt-lang-label').textContent=t('language');$('#wt-enabled-label').textContent=t('enabled');$('#wt-search').placeholder=t('search');$('#wt-from-caption').textContent=t('from');$('#wt-to-caption').textContent=t('to');$('#wt-note').textContent=t('warning')+' '+t('dateNote');dateUI()}
