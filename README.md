@@ -10,8 +10,8 @@ Asenna Tampermonkey ja haluamasi skriptit. Tietokoneella sivupaneeli ja varsinai
 
 | Työkalu | Versio | Asennus |
 | --- | --- | --- |
-| WilmaTools-sivupaneeli (tietokone) | 0.16.4 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/desktop-toolbar.user.js) |
-| Ryhmänohjaajan opintoseuranta | 0.17.0 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/WilmaTools.user.js) |
+| WilmaTools-sivupaneeli (tietokone) | 0.17.0 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/desktop-toolbar.user.js) |
+| Ryhmänohjaajan opintoseuranta | 0.18.0 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/WilmaTools.user.js) |
 | Viestiluonnosten tallennus – Chrome tietokoneella | 0.7.0 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-chrome-desktop.user.js) |
 | Viestiluonnosten tallennus – Firefox Androidissa (kokeellinen) | 0.6.0 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-firefox-android.user.js) |
 
@@ -25,13 +25,13 @@ Wilman **Ohjausryhmäsi** -laatikossa työkalu näyttää arviointinäkymän, tu
 
 **Ryhmät tässä jaksossa** -laatikkoon lisätään Wilman alkuperäisten toimintokuvakkeiden yhteyteen neljäs, kirjekuoren kuvaa käyttävä **Viesti ryhmälle** -toiminto. Alkuperäisiä arviointi- ja tuntimerkintälinkkejä ei korvata. Laatikon sisältöä ei muotoilla erilliseksi linkkilistaksi. Ryhmä- ja ilmoituslaatikoiden keskinäinen järjestys voidaan vaihtaa, jos sivun rakenne sallii sen.
 
-Ryhmäsivulla voi näkyä erottuva **WilmaTools · Arviointinäkymä** -välilehti, jos Wilman sivulla on tuettu välilehtipalkki. Ominaisuuksien toimivuus on tarkistettava oman koulun Wilma-versiossa.
+Ryhmäsivulle lisätään erottuva **WilmaTools · Arviointinäkymä** -välilehti, jos Wilman sivulla on tuettu välilehtipalkki. Tiedonkeruu käynnistyy ensimmäisellä avauskerralla ja näkymä säilyy samalla ryhmäsivulla. Ominaisuuksien toimivuus on tarkistettava oman koulun Wilma-versiossa.
 
 ## Ryhmänohjaajan opintoseuranta
 
-Avaa ohjausryhmän opiskelijan suoritussivu (esimerkiksi `/profiles/students/.../choices?view=gradebook`) ja käynnistä WilmaTools.
+Avaa ohjausryhmän sivu (`/profiles/classes/<ryhmätunniste>`) ja valitse **WilmaTools · Arviointinäkymä** -välilehti. Arviointityökalu ei enää käynnisty opiskelijan suoritussivulla.
 
-Työkalu **löytää opiskelijoita automaattisesti** Wilman valikosta, hakee heidän suoritussivunsa saman palvelimen sisältä ja yhdistää tiedot yhteiseen taulukkoon. Opiskelijoita ei siis syötetä yksitellen. **Versiosta 0.17.0 alkaen ensisijainen opiskelijaluettelo haetaan Wilman etusivun Ohjausryhmäsi-linkin kautta ryhmäsivulta.** Jos ryhmälinkki tai opiskelijalinkit eivät ole saatavilla haetusta HTML:stä, käytetään vanhaa opiskelijavalikkoa varamenetelmänä. Suoritukset haetaan edelleen opiskelijakohtaisesti. Keräyksen yhteenvedossa näkyvät opiskelijamäärä sekä onnistuneet, tyhjät ja epäonnistuneet haut. Avoinna oleva opiskelija yritetään ottaa mukaan, vaikka häntä ei olisi pudotusvalikossa. Tämä tiedonkeruu tapahtuu edelleen opiskelijasivu kerrallaan. Suoraan ryhmätasolta tapahtuvaa arvosanojen hakua ei ole vielä toteutettu, sillä luotettavaa ryhmäkohtaista tietolähdettä ei ole vahvistettu.
+Työkalu **löytää opiskelijoita automaattisesti** Wilman valikosta, hakee heidän suoritussivunsa saman palvelimen sisältä ja yhdistää tiedot yhteiseen taulukkoon. Opiskelijoita ei siis syötetä yksitellen. **Versiossa 0.18.0 opiskelijaluettelo haetaan suoraan avoinna olevalta ryhmäsivulta.** Jos ryhmäsivulta ei löydy opiskelijalinkkejä, näytetään virhe eikä käytetä toisen ryhmän opiskelijavalikkoa. Suoritussivut haetaan edelleen opiskelijakohtaisesti, mutta ilman keinotekoista viivettä, enintään viisi rinnakkaista pyyntöä kerrallaan. Keräyksen yhteenvedossa näkyvät opiskelijamäärä sekä onnistuneet, tyhjät ja epäonnistuneet haut. Avoinna oleva opiskelija yritetään ottaa mukaan, vaikka häntä ei olisi pudotusvalikossa. Tämä tiedonkeruu tapahtuu edelleen opiskelijasivu kerrallaan. Suoraan ryhmätasolta tapahtuvaa arvosanojen hakua ei ole vielä toteutettu, sillä luotettavaa ryhmäkohtaista tietolähdettä ei ole vahvistettu.
 
 Ominaisuudet:
 - Värikoodattu opintojaksomatriisi ja arvosanat.
