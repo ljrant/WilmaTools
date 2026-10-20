@@ -77,3 +77,9 @@ Files: `modules/desktop-toolbar.user.js` (shared desktop menu), `WilmaTools.user
 ## Desktop interface / Tietokonekäyttöliittymä
 
 The sidebar is a **separately installed desktop Tampermonkey script** at `modules/desktop-toolbar.user.js`, active on all `*.inschool.fi` pages. It does not by itself activate disabled scripts. / Sivupaneeli on erillinen, kaikilla Wilman sivuilla näkyvä tietokoneen Tampermonkey-skripti. Muut moduulit on otettava käyttöön Tampermonkeyssa.
+
+## Wilma front-page integrations / Wilman etusivun työkalut
+
+Desktop Sidebar **v0.10.0** detects the real **Ohjausryhmäsi** homepage heading and its teacher-specific `/profiles/classes/<id>` link. It places the homeroom link and **Kopioi opiskelijoiden nimet** action in the same box. Names are parsed from student-profile links in the group page using an authenticated same-origin request, deduplicated by student ID, alphabetized, and copied one per line. If student links are not included in the fetched HTML, the tool shows an error rather than inventing data. Under **Ryhmät tässä jaksossa**, the script lists current teaching groups and looks for grading/attendance links on their group pages; dynamically generated links may not be present. The last-visited student gradebook shortcut remains separate from the teacher-specific class page. No unsupported `/students` shortcut is generated.
+
+Tietokoneen työkalupaneeli etsii aloitussivulta oikean **Ohjausryhmäsi**-laatikon ja opettajakohtaisen ryhmälinkin. Opiskelijoiden nimet haetaan ryhmäsivun opiskelijaprofiililinkeistä ja kopioidaan allekkain. **Ryhmät tässä jaksossa** -osiosta voi avata ryhmät ja etsiä sivuilla olevia arviointi- ja tuntimerkintälinkkejä. Toimintojen löytyminen riippuu Wilman ryhmäsivujen todellisesta HTML-rakenteesta.
