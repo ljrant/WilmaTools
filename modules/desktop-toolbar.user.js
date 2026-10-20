@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Desktop Sidebar
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.16.0
+// @version      0.16.1
 // @description  Finnish-first WilmaTools sidebar on every Wilma page
 // @match        https://*.inschool.fi/*
 // @grant        none
@@ -281,6 +281,20 @@ function swapTwoHomepageBoxes(){
   a.before(b);
  }
 }
+
+function installClassAssessmentTab(){
+ if(!/^\/profiles\/classes\/\d+\/?$/.test(location.pathname))return;
+ if(document.getElementById('wt-class-assessment-tab'))return;
+ const nativeTabs=document.querySelector('ul.nav-tabs,.nav-tabs,[role="tablist"]');
+ if(!nativeTabs)return;
+ const li=document.createElement('li');li.id='wt-class-assessment-tab';
+ const a=label('a',lang==='fi'?'WilmaTools · Arviointinäkymä':'WilmaTools · Grade overview');
+ a.href='#wt-open-assessment';a.style.cssText='background:#e9f4ff!important;color:#145e94!important;font-weight:700;border:1px solid #86b5d6;border-radius:5px 5px 0 0';
+ a.onclick=async(e)=>{e.preventDefault();await openHomeroomGrades(location.pathname)};
+ li.append(a);nativeTabs.append(li);
+}
+installClassAssessmentTab();
+if(/^\/profiles\/classes\/\d+\/?$/.test(location.pathname)){let n=0;const timer=setInterval(()=>{installClassAssessmentTab();if(++n>=10)clearInterval(timer)},1000)}
 if(['/', '/index','/dashboard','/home'].includes(location.pathname)){
  attachHome();swapTwoHomepageBoxes();
  // Wilma can render the homepage blocks after DOMContentLoaded.
