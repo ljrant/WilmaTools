@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Desktop Sidebar
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.15.0
+// @version      0.15.1
 // @description  Finnish-first WilmaTools sidebar on every Wilma page
 // @match        https://*.inschool.fi/*
 // @grant        none
@@ -211,10 +211,30 @@ function attachHome(){
  }
  if(wrap.childNodes.length)period.append(wrap);
 }
+function swapTwoHomepageBoxes(){
+ const headings=[...document.querySelectorAll('h1,h2,h3,h4,h5,h6')];
+ const byTitle=t=>headings.find(h=>txt(h.textContent)===t);
+ const notices=byTitle('Ilmoitukset'),groups=byTitle('Ryhmät tässä jaksossa');
+ if(!notices||!groups)return;
+ // Only swap two boxes sharing the same immediate parent. Never move a whole column or timetable.
+ function card(h){
+  for(let p=h;p&&p.parentElement&&p!==document.body;p=p.parentElement){
+   if(p===document.body||p.contains(notices)&&p.contains(groups))break;
+   if(p.matches('.panel,.card,.well,.widget,.box,.dashboard-widget'))return p;
+  }
+  return null;
+ }
+ const a=card(notices),b=card(groups);
+ if(!a||!b||a===b||a.parentElement!==b.parentElement)return;
+ if(b.compareDocumentPosition(a)&Node.DOCUMENT_POSITION_FOLLOWING){
+  // Groups currently after notices: move just the groups box before notices.
+  a.before(b);
+ }
+}
 if(['/', '/index','/dashboard','/home'].includes(location.pathname)){
- attachHome();
+ attachHome();swapTwoHomepageBoxes();
  // Wilma can render the homepage blocks after DOMContentLoaded.
  let tries=0;
- const interval=setInterval(()=>{attachHome();if(++tries>=12)clearInterval(interval)},1000);
+ const interval=setInterval(()=>{attachHome();swapTwoHomepageBoxes();if(++tries>=12)clearInterval(interval)},1000);
 }
 })();
