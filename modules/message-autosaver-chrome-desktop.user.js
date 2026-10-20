@@ -650,7 +650,7 @@
       const field=$(SEL.subject);if(field){field.value=item.subject||'';dispatchBasicEvents(field)}
       setBodyHtml(item.bodyHtml||item.body||'');
       if(withRecipients&&item.recipients)restoreRecipients(item.recipients).then(ok=>{
-       if(!ok)console.warn('[WilmaTools] Check recipients manually before sending.');
+       window.dispatchEvent(new CustomEvent('wilmatools:recipients-verified',{detail:{verified:ok}}));
       });
     }
     function library(){
@@ -658,7 +658,7 @@
       const aside=document.createElement('aside');aside.id='wt-message-library';
       aside.style.cssText='position:fixed;right:0;top:0;height:100vh;width:min(370px,93vw);background:white;color:#22394d;z-index:2147483400;box-shadow:-4px 0 18px #0002;padding:17px;overflow-y:auto;font:14px/1.45 system-ui;box-sizing:border-box';
       document.body.append(aside);
-      let tab='drafts',category='Kaikki',edit=-1;
+      let tab='drafts',category='Kaikki',edit=-1,recipientStatus='';
       const b=(name,fn)=>{const x=document.createElement('button');x.type='button';x.textContent=name;x.onclick=fn;x.style.cssText='border:1px solid #b9cbd9;background:#eff6fb;border-radius:6px;padding:7px;margin:4px;color:#234968;cursor:pointer;font:inherit';return x};
       const label=(tag,text)=>{const e=document.createElement(tag);e.textContent=text;return e};
       function draw(){
@@ -680,6 +680,7 @@
        }
        const names=safeReadSession('wilmatools.recipientReminder.v1',[]);
        if(names.length){const note=label('div','Valitse Wilmassa vastaanottajat: '+names.join(', '));note.style.cssText='padding:9px;background:#fff6da;border:1px solid #e3cd91;border-radius:6px';aside.append(note);aside.append(b('Vastaanottajat tarkistettu',()=>{sessionStorage.removeItem('wilmatools.recipientReminder.v1');draw()}))}
+       if(recipientStatus){const receipt=label('p',recipientStatus);receipt.style.cssText='padding:8px;background:#fff7e5;border-radius:5px;color:#69501e';aside.append(receipt)}
        const hint=label('p','Vastaanottajat on tarkistettava Wilmassa ennen lähettämistä. Tallenteet säilyvät vain tässä selaimessa.');hint.style.color='#687987';aside.append(hint)
       }
       function editor(){
@@ -694,6 +695,7 @@
       }
       draw();
       window.addEventListener('wilmatools:drafts-changed',()=>{if(!aside.hidden&&tab==='drafts')draw()});
+      window.addEventListener('wilmatools:recipients-verified',e=>{recipientStatus=e.detail.verified?'Tallennetut vastaanottajakentät vastasivat valintaa. Tarkista silti vastaanottajat.':'Vastaanottajien palautusta ei voitu vahvistaa. Valitse vastaanottajat Wilmassa.';draw()});
     }
     function addLibraryEntry(){
       if(document.getElementById('wt-library-entry'))return;
