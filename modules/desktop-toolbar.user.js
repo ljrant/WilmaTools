@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Desktop Sidebar
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.10.0
+// @version      0.11.0
 // @description  Finnish-first WilmaTools sidebar on every Wilma page
 // @match        https://*.inschool.fi/*
 // @grant        none
@@ -33,92 +33,120 @@ const setting=label('div','');setting.className='item';setting.append(label('str
 btn.onclick=()=>{panel.hidden=!panel.hidden;if(!panel.hidden)draw()};
 document.addEventListener('keydown',e=>{if(e.key==='Escape')panel.hidden=true});
 
+
 function safePath(a){try{const u=new URL(a.getAttribute('href'),location.href);return u.origin===location.origin?u.pathname+u.search:null}catch{return null}}
-function sectionFor(title){
- const h=[...document.querySelectorAll('h1,h2,h3,h4,h5,h6')].find(e=>e.textContent.trim().toLowerCase()===title.toLowerCase());
- if(!h)return null;
- let p=h.parentElement;
- while(p&&p!==document.body){
-   const headings=[...p.querySelectorAll('h1,h2,h3,h4,h5,h6')];
-   if(headings.length>1)break;
-   if(p.querySelector('a[href]')&&p.getBoundingClientRect().width>200)return p;
-   p=p.parentElement;
- }
- return h.parentElement;
+function txt(s){return String(s||'').replace(/\s+/g,' ').trim()}
+function makeLink(text,url){const a=label('a',text);a.href=url;a.style.cssText='display:inline-block;margin:2px 12px 3px 0;color:#125f91;text-decoration:underline';return a}
+function makeAction(text,fn){const a=label('button',text);a.type='button';a.style.cssText='padding:0;margin:2px 12px 3px 0;border:0;background:transparent;color:#125f91;text-decoration:underline;font:inherit;cursor:pointer;text-align:left';a.onclick=fn;return a}
+function getSection(title){
+ const h=[...document.querySelectorAll('h1,h2,h3,h4,h5,h6')].find(el=>txt(el.textContent).toLowerCase()===title.toLowerCase());if(!h)return null;
+ for(let p=h.parentElement;p&&p!==document.body;p=p.parentElement){
+  if(p.querySelectorAll('h1,h2,h3,h4,h5,h6').length>1)break;
+  if(p.querySelector('a[href]')&&p.getBoundingClientRect().width>180)return p;
+ }return h.parentElement;
 }
-const pathname=location.pathname;
-if(['/', '/index','/dashboard','/home'].includes(pathname)){
- const homeroom=sectionFor('Ohjausryhmäsi');
- const courses=sectionFor('Ryhmät tässä jaksossa');
- // Use the real teacher-specific class link, not the invalid /students shortcut.
- const groupLink=homeroom&&[...homeroom.querySelectorAll('a[href]')].find(a=>/^\/profiles\/classes\/\d+\/?$/.test(safePath(a)||''));
- const groupPath=groupLink&&safePath(groupLink);
- const widget=document.createElement('section');widget.id='wt-home-tools';widget.style.cssText='border-top:1px solid #cbd9e5;margin-top:12px;padding:12px 0;font:14px/1.5 system-ui;color:#193c59';
- const heading=label('h3','WilmaTools — '+(lang==='fi'?'ohjausryhmän työkalut':'homeroom tools'));heading.style.margin='0 0 10px';widget.append(heading);
- const action=(text,fn)=>{const b=label('button',text);b.type='button';b.style.cssText='display:inline-block;margin:0 8px 8px 0;padding:8px 11px;border:1px solid #9fbcd1;background:#e7f1f8;color:#183f60;border-radius:7px;cursor:pointer';b.onclick=fn;widget.append(b);return b};
- if(groupPath)action(lang==='fi'?'Avaa ohjausryhmä':'Open homeroom',()=>location.assign(groupPath));
- // Gradebook route is distinct from class profile; only link if actually visited.
- const gradePath=route();
- if(gradePath)action(lang==='fi'?'Avaa arviointinäkymä':'Open grade overview',linkProgress);
- else widget.append(label('p',lang==='fi'?'Arviointinäkymän linkki tulee käyttöön, kun avaat kerran ryhmän opiskelijan suoritussivun.':'The grade overview shortcut becomes available after opening a student gradebook.'));
- if(groupPath)action(lang==='fi'?'Kopioi opiskelijoiden nimet':'Copy student names',async()=>{
-  const b=event?.currentTarget;
-  try{
-   const response=await fetch(groupPath,{credentials:'same-origin',redirect:'follow'});
-   if(!response.ok||new URL(response.url).origin!==location.origin||!/^\/profiles\/classes\/\d+\/?$/.test(new URL(response.url).pathname))throw Error('Unexpected response');
-   const doc=new DOMParser().parseFromString(await response.text(),'text/html');
-   // Select only explicit student profile links; deduplicate by student ID.
-   const names=new Map();
-   for(const a of doc.querySelectorAll('a[href]')){
-    const u=new URL(a.getAttribute('href'),location.origin);
-    const m=u.origin===location.origin&&u.pathname.match(/^\/profiles\/students\/(\d+)(?:\/|$)/);
-    const name=a.textContent.replace(/\s+/g,' ').trim();
-    if(m&&name&&name.length<120&&!names.has(m[1]))names.set(m[1],name);
-   }
-   if(!names.size){alert(lang==='fi'?'Opiskelijoita ei löytynyt ryhmäsivun HTML:stä. Lähetä ryhmäsivun linkkirakenne, jotta toiminto voidaan sovittaa Wilmaasi.':'No students found in the group page HTML. Additional group page structure is needed.');return}
-   const output=[...names.values()].sort((a,b)=>a.localeCompare(b,'fi')).join('\n');
-   try{await navigator.clipboard.writeText(output);alert((lang==='fi'?'Kopioitu nimiä: ':'Names copied: ')+names.size)}
-   catch{prompt(lang==='fi'?'Kopioi nimet tästä:':'Copy names:',output)}
-  }catch(e){alert((lang==='fi'?'Nimilistaa ei voitu hakea: ':'Could not retrieve class list: ')+e.message)}
- });
- else widget.append(label('p',lang==='fi'?'Ohjausryhmän linkkiä ei löydy tästä laatikosta.':'No homeroom class link found in this box.'));
- if(homeroom)homeroom.append(widget);
- // Gather CURRENT period teaching-group links already visible on home. No guessed routes.
- if(courses){
-   const wrap=document.createElement('section');wrap.id='wt-course-links';wrap.style.cssText='border-top:1px solid #cbd9e5;padding-top:12px;margin-top:12px';
-   wrap.append(label('h3',lang==='fi'?'WilmaTools — nykyiset opetusryhmät':'WilmaTools — current teaching groups'));
-   const links=new Map();
-   for(const a of courses.querySelectorAll('a[href]')){
-     const path=safePath(a),name=a.textContent.replace(/\s+/g,' ').trim();
-     if(path&&/^\/(?:groups|profiles\/classes)\/\d+(?:\/|$)/.test(path)&&name&&!links.has(path))links.set(path,name);
-   }
-   for(const [url,name]of links){
-     const row=document.createElement('div');row.style.cssText='display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:5px 0';
-     row.append(label('strong',name));
-     const a=label('a',lang==='fi'?'Avaa ryhmä':'Open group');a.href=url;a.style.marginRight='6px';row.append(a);
-     const button=label('button',lang==='fi'?'Näytä arviointi- ja tuntimerkintälinkit':'Show grading and attendance links');button.type='button';
-     button.onclick=async()=>{
-       button.disabled=true;button.textContent=lang==='fi'?'Haetaan…':'Loading…';
-       try{
-         const response=await fetch(url,{credentials:'same-origin',redirect:'follow'});
-         if(!response.ok||new URL(response.url).origin!==location.origin)throw Error('Response error');
-         const doc=new DOMParser().parseFromString(await response.text(),'text/html');
-         const matches=new Map();
-         for(const link of doc.querySelectorAll('a[href]')){
-           const text=link.textContent.replace(/\s+/g,' ').trim();
-           const path=safePath(link);
-           if(path&&/(arvioint|arvosan|grade|tuntimerk|poissaol|attendance|lesson\s*note)/i.test(text))matches.set(path,text);
-         }
-         button.textContent=lang==='fi'?'Linkit':'Links';
-         if(!matches.size){row.append(label('small',lang==='fi'?'Ei tunnistettuja linkkejä ryhmäsivun HTML:ssä.':'No matching links in fetched HTML.'));return}
-         const details=document.createElement('div');details.style.flexBasis='100%';
-         for(const [path,text]of matches){const a=label('a',text);a.href=path;a.style.cssText='display:inline-block;margin:2px 12px 4px 0';details.append(a)}
-         row.append(details);
-       }catch(e){button.disabled=false;button.textContent=lang==='fi'?'Yritä uudelleen':'Retry'}
-     };
-     row.append(button);wrap.append(row);
-   }
-   if(links.size)courses.append(wrap);
+function info(msg){alert(msg)}
+async function groupDoc(url){
+ const r=await fetch(url,{credentials:'same-origin',redirect:'follow',cache:'no-store'});
+ const final=new URL(r.url);
+ if(!r.ok||final.origin!==location.origin||!/^\/(?:groups|profiles\/classes)\/\d+(?:\/|$)/.test(final.pathname))throw Error('Ryhmäsivun haku epäonnistui');
+ return new DOMParser().parseFromString(await r.text(),'text/html');
+}
+function studentNames(doc){
+ const found=new Map();
+ for(const a of doc.querySelectorAll('a[href]')){
+   const href=safePath(a);const match=href&&href.match(/^\/profiles\/students\/(\d+)(?:\/|$|\?)/);
+   const name=txt(a.textContent);
+   if(match&&name&&name.length<120&&!found.has(match[1]))found.set(match[1],name);
  }
+ return [...found.values()].sort((a,b)=>a.localeCompare(b,'fi'));
+}
+async function copyStudents(url){
+ try{
+  const names=studentNames(await groupDoc(url));
+  if(!names.length)return info(lang==='fi'?'Opiskelijalinkkejä ei löydy ryhmäsivun HTML:stä.':'Student links were not found in the group page HTML.');
+  const value=names.join('\n');
+  try{await navigator.clipboard.writeText(value);info((lang==='fi'?'Kopioitu opiskelijaa: ':'Students copied: ')+names.length)}
+  catch{prompt(lang==='fi'?'Kopioi nimilista':'Copy student names',value)}
+ }catch(e){info(e.message)}
+}
+function groupMessageLinks(doc){
+ const links={students:null,guardians:null,both:null,group:null};
+ for(const a of doc.querySelectorAll('a[href]')){
+  const path=safePath(a);if(!path||!path.startsWith('/messages/compose'))continue;
+  const labelText=txt(a.textContent).toLowerCase();
+  if(/huoltaj|guardian|parent/.test(labelText)&&/opiskelij|student/.test(labelText))links.both=path;
+  else if(/huoltaj|guardian|parent/.test(labelText))links.guardians=path;
+  else if(/opiskelij|student/.test(labelText))links.students=path;
+  else if(/ryhm|group|viesti|message/.test(labelText))links.group=path;
+ }
+ return links;
+}
+async function groupMessage(url,type){
+ try{
+  const links=groupMessageLinks(await groupDoc(url));
+  const target=links[type]||(type==='group'?(links.students||links.group):null);
+  if(!target)return info(lang==='fi'?'Wilmasta ei löytynyt linkkiä, joka esivalitsisi tämän ryhmän vastaanottajat. Viestiä ei avattu väärillä vastaanottajilla. Tarvitsen ryhmäsivun viestilinkin HTML-rakenteen.':'No verified preselected-recipient message link was found for this group. Nothing was opened.');
+  location.assign(target);
+ }catch(e){info(e.message)}
+}
+function gradingLinks(doc){
+ const found={grading:null,attendance:null};
+ for(const a of doc.querySelectorAll('a[href]')){
+  const path=safePath(a);if(!path)continue;
+  if(/\/grading\/?(?:\?|$)/.test(path))found.grading=path;
+  if(/\/attendance_edit\/?(?:\?|$)/.test(path))found.attendance=path;
+ }return found;
+}
+function compactBlock(){const block=document.createElement('div');block.className='wt-inline-tools';block.style.cssText='margin:5px 0 4px;padding:6px 0;border-top:1px solid #dfe8ee;font:13px/1.5 system-ui';return block}
+function attachHome(){
+ const home=getSection('Ohjausryhmäsi'),period=getSection('Ryhmät tässä jaksossa');
+ const classAnchor=home&&[...home.querySelectorAll('a[href]')].find(a=>/^\/profiles\/classes\/\d+\/?$/.test(safePath(a)||''));
+ if(home&&classAnchor&&!home.querySelector('#wt-home-tools')){
+  const url=safePath(classAnchor),tools=compactBlock();tools.id='wt-home-tools';
+  // Original class title remains the navigable Wilma link.
+  const last=route();
+  if(last)tools.append(makeLink(lang==='fi'?'Arviointinäkymä':'Grade overview',last));
+  tools.append(makeAction(lang==='fi'?'Kopioi opiskelijalista':'Copy student list',()=>copyStudents(url)));
+  const messages=document.createElement('div');
+  messages.append(makeAction(lang==='fi'?'Viesti opiskelijoille':'Message students',()=>groupMessage(url,'students')));
+  messages.append(makeAction(lang==='fi'?'Viesti huoltajille':'Message guardians',()=>groupMessage(url,'guardians')));
+  messages.append(makeAction(lang==='fi'?'Viesti opiskelijoille ja huoltajille':'Message students and guardians',()=>groupMessage(url,'both')));
+  tools.append(messages);home.append(tools);
+ }
+ if(!period||period.querySelector('#wt-course-links'))return;
+ const courses=new Map();
+ for(const a of period.querySelectorAll('a[href]')){
+  const href=safePath(a);
+  if(!href||!/^\/(?:groups|profiles\/classes)\/\d+\/?$/.test(href))continue;
+  const name=txt(a.textContent);if(!name||courses.has(href))continue;
+  courses.set(href,{name,href});
+ }
+ if(!courses.size)return;
+ const wrap=document.createElement('div');wrap.id='wt-course-links';wrap.style.cssText='border-top:1px solid #dfe8ee;padding-top:8px;margin-top:8px;font:13px/1.5 system-ui';
+ for(const group of courses.values()){
+  const row=document.createElement('div');row.style.cssText='padding:5px 0;border-bottom:1px solid #edf1f5';
+  // Use the course name itself as the link, not a separate "Avaa ryhmä" button.
+  const title=makeLink(group.name,group.href);title.style.fontWeight='600';row.append(title);
+  const sub=document.createElement('div');sub.style.cssText='display:flex;gap:0;flex-wrap:wrap';
+  sub.append(makeAction(lang==='fi'?'Viesti ryhmälle':'Message group',()=>groupMessage(group.href,'group')));
+  row.append(sub);wrap.append(row);
+  // Fetch links automatically; no "show links" button.
+  groupDoc(group.href).then(doc=>{
+   if(!row.isConnected)return;
+   const found=gradingLinks(doc);
+   const frag=document.createDocumentFragment();
+   if(found.grading)frag.append(makeLink(lang==='fi'?'Arviointikirja':'Gradebook',found.grading));
+   if(found.attendance)frag.append(makeLink(lang==='fi'?'Tuntimerkinnät':'Attendance',found.attendance));
+   sub.prepend(frag);
+  }).catch(()=>{});
+ }
+ period.append(wrap);
+}
+if(['/', '/index','/dashboard','/home'].includes(location.pathname)){
+ attachHome();
+ // Wilma can render the homepage blocks after DOMContentLoaded.
+ let tries=0;
+ const interval=setInterval(()=>{attachHome();if(++tries>=12)clearInterval(interval)},1000);
 }
 })();
