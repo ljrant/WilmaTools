@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.8.2
+// @version      0.9.0
 // @description  Local Wilma homeroom gradebook overview, FI/EN
 // @match        https://*.inschool.fi/profiles/students/*/choices*
 // @grant        none
@@ -70,6 +70,7 @@ return [...people.values()];
 function parse(html,s){const doc=new DOMParser().parseFromString(html,'text/html');const table=[...doc.querySelectorAll('table')].find(a=>{const h=tidy([...a.querySelectorAll('th')].map(x=>x.textContent).join(' ')).toLowerCase();return h.includes('arvosana')&&(h.includes('ects')||h.includes('laajuus'))});if(!table)throw Error('Gradebook table not found');let group='',subject='',rows=[];for(const tr of table.querySelectorAll('tr')){const level=[...tr.classList].find(x=>/^level\d+$/.test(x)),c=[...tr.children].filter(x=>x.matches('td,th'));if(!level||c.length<3)continue;const name=tidy(c[0].textContent);if(!name)continue;if(level==='level1'){group=name;subject='';continue}if(level==='level2'){subject=name;continue}if(level!=='level3')continue;rows.push({id:s.id,student:s.name,name,group,subject,key:[group,subject,name].join('\u001f'),grade:tidy(c[1].textContent),ects:tidy(c[2].textContent),date:isoDate(c[3]?.textContent),teacher:tidy(c[4]?.textContent)})}return rows}
 let root=null;const $=s=>root?.querySelector(s);const el=(tag,txt='',cls='')=>{const e=document.createElement(tag);e.textContent=txt;if(cls)e.className=cls;return e};
 const style=document.createElement('style');style.textContent=`#wt-launch{position:fixed;right:16px;bottom:16px;z-index:2147483600;background:#17466f;color:white;padding:11px 16px;border:0;border-radius:9px;font-weight:700;cursor:pointer}#wt-screen{position:fixed;inset:0;z-index:2147483601;background:#0009;font:14px system-ui,Arial;color:#17212b}#wt-panel{position:absolute;inset:3%;display:flex;flex-direction:column;overflow:hidden;border-radius:12px;background:#fff}#wt-header,#wt-toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid #ddd}#wt-header{background:#eef4fa}#wt-header strong{margin-right:auto;font-size:17px}#wt-panel button,#wt-panel select,#wt-panel input{font:inherit;padding:6px;border:1px solid #b6c3d1;border-radius:5px}#wt-status,#wt-note{padding:6px 16px;color:#4d5c69;font-size:12px}#wt-content{flex:1;overflow:auto;padding:10px 16px}#wt-content table{border-collapse:separate;border-spacing:0;font-size:12px}#wt-content th,#wt-content td{border:1px solid #d7dde2;padding:6px 8px;text-align:center}#wt-content th{position:sticky;top:0;z-index:2;background:#eaf0f6}#wt-content th:first-child,#wt-content td:first-child{position:sticky;left:0;z-index:3;text-align:left;min-width:145px;background:#fff}#wt-content th:first-child{z-index:4;background:#eaf0f6}.wt-heading{width:144px;min-width:144px;max-width:144px;white-space:normal;overflow-wrap:anywhere;word-break:normal;vertical-align:bottom;line-height:1.25;height:auto;min-height:65px;cursor:pointer}.wt-grade{font-weight:bold;min-width:38px}#wt-hide-list{max-height:145px;overflow:auto;padding:10px 18px;border-bottom:1px solid #ddd}#wt-hide-list label{display:block;margin:3px 0}#wt-content .wt-issues td{text-align:left}#wt-content .wt-issues .wt-grade{text-align:center}`;document.head.append(style);
+try{localStorage.setItem('wilmatools.lastGradebook',location.pathname+location.search)}catch{}
 const launch=el('button','WilmaTools');launch.id='wt-launch';document.body.append(launch);launch.onclick=()=>{if(!root)open()};
 window.addEventListener('wilmatools:open-progress',()=>{if(!root)open()});
 if(window.__wilmaToolsHub)launch.style.display='none';
@@ -79,22 +80,44 @@ function translate(){$('#wt-title').textContent=t('title');for(const [id,key] of
 function dateUI(){$('#wt-year-label').hidden=state.period!=='school';$('#wt-from-label').hidden=state.period!=='custom';$('#wt-to-label').hidden=state.period!=='custom'}
 function selected(){let a=state.rows.filter(r=>!cfg.hidden.has(r.key));if(state.period==='school')a=a.filter(r=>r.date&&r.date>=state.year+'-08-01'&&r.date<=(state.year+1)+'-07-31');if(state.period==='custom')a=a.filter(r=>r.date&&state.from&&state.to&&state.from<=state.to&&r.date>=state.from&&r.date<=state.to);if(state.term.trim()){let q=state.term.toLocaleLowerCase('fi');a=a.filter(r=>[r.student,r.name,r.group,r.subject].some(x=>x.toLocaleLowerCase('fi').includes(q)))}return a}
 function renderHide(){const pane=$('#wt-hide-list');pane.replaceChildren(el('div',t('hideNote')));const cs=[...new Map(state.rows.map(r=>[r.key,r.name])).entries()].sort((a,b)=>a[1].localeCompare(b[1],'fi'));for(const [key,name]of cs){const l=el('label');const c=el('input');c.type='checkbox';c.checked=!cfg.hidden.has(key);c.onchange=()=>{c.checked?cfg.hidden.delete(key):cfg.hidden.add(key);save();render()};l.append(c,document.createTextNode(' '+name));l.title=key.replaceAll('\u001f',' / ');pane.append(l)}}
+function openMessageEditor(available){
+  if(document.getElementById('wt-message-editor'))return;
+  const person=available.find(x=>state.messageStudentIds.has(x.id));
+  if(!person){alert(mt('empty'));return}
+  const overlay=el('div');overlay.id='wt-message-editor';
+  overlay.style.cssText='position:fixed;inset:0;background:#0009;z-index:2147483630;display:grid;place-items:center;padding:15px';
+  const card=el('section');card.style.cssText='width:min(650px,96vw);max-height:90vh;overflow:auto;background:white;color:#213547;padding:22px;border-radius:12px;box-shadow:0 20px 60px #0005;font:14px/1.5 system-ui';
+  card.append(el('h2',cfg.lang==='fi'?'Viestipohjan muokkaus':'Message template editor'));
+  card.append(el('p',person.name+' — '+(cfg.lang==='fi'?'viesti lähetetään vain Wilmassa manuaalisesti':'messages are sent manually in Wilma')));
+  function field(label,value,multi){const wrapper=el('label',label);wrapper.style.cssText='display:block;margin:12px 0;font-weight:600';const input=el(multi?'textarea':'input');if(multi)input.rows=9;else input.type='text';input.value=value;input.style.cssText='display:block;width:100%;margin-top:5px;padding:10px;border:1px solid #9cabb8;border-radius:6px;font:14px/1.5 system-ui;box-sizing:border-box';wrapper.append(input);card.append(wrapper);return input}
+  const subject=field(mt('subject'),state.messageSubject||mt('sampleSubject'),false);
+  const body=field(mt('body'),state.messageText||mt('sampleBody'),true);
+  const hint=el('p',cfg.lang==='fi'?'Muuttujat: {etunimi} (opiskelijan etunimi). Sisältö tallennetaan vain tämän välilehden muistiin.':'Variable: {etunimi} (student first name). Text is kept in this tab only.');
+  card.append(hint);
+  const preview=el('pre');preview.style.cssText='white-space:pre-wrap;background:#f2f6f9;border:1px solid #d9e1e8;padding:12px;border-radius:6px;max-height:200px;overflow:auto';
+  const build=()=>subject.value+'\\n\\n'+body.value.replaceAll('{etunimi}',person.name.split(/\\s+/)[0]).replaceAll('{name}',person.name.split(/\\s+/)[0]);
+  const update=()=>{preview.textContent=build()};subject.oninput=update;body.oninput=update;update();
+  card.append(el('h3',cfg.lang==='fi'?'Esikatselu':'Preview'),preview);
+  const actions=el('div');actions.style.cssText='display:flex;flex-wrap:wrap;gap:9px;margin-top:14px';
+  const keep=()=>{state.messageSubject=subject.value;state.messageText=body.value};
+  const close=()=>{keep();overlay.remove()};
+  const copy=el('button',cfg.lang==='fi'?'Kopioi ja avaa Wilman viestit':'Copy and open Wilma messages');
+  copy.onclick=async()=>{keep();try{await navigator.clipboard.writeText(build())}catch{prompt(mt('noClipboard'),build());return}alert(mt('notice'));window.open(location.origin+'/messages/compose','_blank','noopener')};
+  const cancel=el('button',cfg.lang==='fi'?'Sulje':'Close');cancel.onclick=close;
+  actions.append(copy,cancel);card.append(actions);overlay.append(card);document.body.append(overlay);
+  overlay.addEventListener('click',e=>{if(e.target===overlay)close()});
+}
 function render(){if(!root)return;$('#wt-stop').disabled=!state.busy;$('#wt-collect').disabled=state.busy||!cfg.enabled;$('#wt-export').disabled=!state.rows.length;$('#wt-matrix').disabled=state.mode==='matrix';$('#wt-issues').disabled=state.mode==='issues';renderHide();const box=$('#wt-content');box.replaceChildren();if(!cfg.enabled||!state.rows.length){box.append(el('p',t('none')));return}const rows=selected();if(state.mode==='issues'){const flagged=rows.filter(r=>flag(r.grade));box.append(el('p',t('found',{n:new Set(flagged.map(x=>x.id)).size,c:new Set(flagged.map(x=>x.key)).size,r:flagged.length})));const unique=[...new Map(flagged.map(r=>[r.id,{id:r.id,name:r.student}])).values()];
-const msgbox=el('section');msgbox.style.cssText='max-width:720px;background:#f3f7fb;padding:14px;border:1px solid #cbd9e5;border-radius:9px;margin:12px 0;';
-msgbox.append(el('h3',mt('heading')),el('p',mt('info')));
-const subjectLabel=el('label',mt('subject')+' '),subjectInput=el('input');subjectInput.type='text';subjectInput.style.width='min(98%,450px)';subjectInput.value=state.messageSubject||mt('sampleSubject');subjectInput.oninput=()=>state.messageSubject=subjectInput.value;subjectLabel.append(subjectInput);msgbox.append(subjectLabel);
-const bodyLabel=el('label',mt('body')),bodyInput=el('textarea');bodyInput.rows=6;bodyInput.style.cssText='display:block;width:100%;margin:8px 0;white-space:pre-wrap';bodyInput.value=state.messageText||mt('sampleBody');bodyInput.oninput=()=>state.messageText=bodyInput.value;bodyLabel.append(bodyInput);msgbox.append(bodyLabel);
-const picks=el('div');picks.style.cssText='max-height:145px;overflow:auto;border:1px solid #ddd;padding:8px;margin:10px 0';
-for(const p of unique){const label=el('label');label.style.cssText='display:block;margin:4px';const cb=el('input');cb.type='radio';cb.name='wt-message-student';cb.checked=state.messageStudentIds.has(p.id);cb.onchange=()=>{state.messageStudentIds.clear();state.messageStudentIds.add(p.id)};label.append(cb,document.createTextNode(' '+p.name));picks.append(label)}msgbox.append(picks);
-const prepare=el('button',mt('prepare'));prepare.onclick=async()=>{
-const targets=unique.filter(x=>state.messageStudentIds.has(x.id));if(!targets.length){alert(mt('empty'));return}
-const first=targets[0],firstName=first.name.split(/\s+/)[0];
-const msg=bodyInput.value.replaceAll('{etunimi}',firstName).replaceAll('{name}',firstName);
-const draft=subjectInput.value+'\n\n'+msg;
-try{await navigator.clipboard.writeText(draft)}catch{prompt(mt('noClipboard'),draft);return}
-alert(mt('notice'));
-window.open(location.origin+'/messages/compose','_blank','noopener');
-};msgbox.append(prepare);box.append(msgbox);
+const msgbox=el('section');
+msgbox.style.cssText='max-width:700px;background:#f3f7fb;padding:14px;border:1px solid #cbd9e5;border-radius:9px;margin:12px 0;';
+msgbox.append(el('h3',mt('heading')));
+msgbox.append(el('p',cfg.lang==='fi'?'Valitse opiskelija ja avaa erillinen viestipohjan muokkaus.':'Select a student and open the dedicated message editor.'));
+const picks=el('div');picks.style.cssText='max-height:165px;overflow:auto;border:1px solid #d2dce5;background:#fff;padding:8px;margin:10px 0;border-radius:6px';
+for(const person of unique){const label=el('label');label.style.cssText='display:block;padding:5px';const cb=el('input');cb.type='radio';cb.name='wt-message-student';cb.checked=state.messageStudentIds.has(person.id);cb.onchange=()=>{state.messageStudentIds.clear();state.messageStudentIds.add(person.id)};label.append(cb,document.createTextNode(' '+person.name));picks.append(label)}
+msgbox.append(picks);
+const editButton=el('button',cfg.lang==='fi'?'Muokkaa viestipohjaa':'Edit message template');
+editButton.type='button';editButton.onclick=()=>openMessageEditor(unique);
+msgbox.append(editButton);box.append(msgbox);
 const table=el('table');table.className='wt-issues';const h=el('tr');for(const v of ['student','course','grade','issue'])h.append(el('th',t(v)));table.append(h);flagged.sort((a,b)=>a.student.localeCompare(b.student,'fi')||a.name.localeCompare(b.name,'fi'));for(const r of flagged){const tr=el('tr');tr.append(el('td',r.student),el('td',r.name));const g=el('td',r.grade,'wt-grade'),[bg,fg]=color(r.grade,true);g.style.background=bg;g.style.color=fg;tr.append(g,el('td',t(flag(r.grade))));table.append(tr)}box.append(table);return}
 const cols=[...new Map(rows.map(r=>[r.key,r.name])).entries()].sort((a,b)=>a[1].localeCompare(b[1],'fi'));const by=new Map();for(const r of rows){if(!by.has(r.id))by.set(r.id,new Map());by.get(r.id).set(r.key,r)}const people=state.people.filter(s=>by.has(s.id));if(state.sort)people.sort((a,b)=>(by.get(a.id)?.get(state.sort)?.grade||'').localeCompare(by.get(b.id)?.get(state.sort)?.grade||'','fi',{numeric:true}));box.append(el('p',t('found',{n:people.length,c:cols.length,r:rows.length})));const table=el('table'),head=el('thead'),hr=el('tr');hr.append(el('th',t('student')));for(const [key,name]of cols){const th=el('th',name,'wt-heading');th.title=key.replaceAll('\u001f',' / ');th.tabIndex=0;th.onclick=()=>{state.sort=key;render()};th.onkeydown=e=>{if(e.key==='Enter'){state.sort=key;render()}};hr.append(th)}head.append(hr);table.append(head);const body=el('tbody');for(const s of people){const tr=el('tr');tr.append(el('td',s.name));for(const [key]of cols){const r=by.get(s.id)?.get(key),td=el('td',r?(r.grade||'…'):'—','wt-grade'),[bg,fg]=color(r?.grade||'',!!r);td.style.background=bg;td.style.color=fg;td.title=r?r.name+' | ECTS: '+r.ects:t('missing');tr.append(td)}body.append(tr)}table.append(body);box.append(table)}
 async function collect(){state.people=discover();if(!state.people.length)return status(t('none'));if(!confirm(t('confirm',{n:state.people.length})))return;state.busy=true;state.stop=false;state.rows=[];state.errors=[];render();for(let i=0;i<state.people.length;i++){if(state.stop||!root)break;const s=state.people[i];status(t('reading',{i:i+1,n:state.people.length}));try{const res=await fetch(s.url,{credentials:'same-origin',redirect:'follow',cache:'no-store'});if(!res.ok||new URL(res.url).origin!==location.origin||!p.test(new URL(res.url).pathname))throw Error('Unexpected HTTP response');const data=parse(await res.text(),s);if(!data.length)state.errors.push('Student '+(i+1)+': 0 courses');state.rows.push(...data)}catch(e){state.errors.push('Student '+(i+1)+': '+e.message)}render();if(i<state.people.length-1&&!state.stop)await new Promise(r=>setTimeout(r,650))}state.busy=false;if(root){status(t('finished',{n:state.rows.length,e:state.errors.length}));render()}}
