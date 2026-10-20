@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Desktop Sidebar
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.12.0
+// @version      0.13.0
 // @description  Finnish-first WilmaTools sidebar on every Wilma page
 // @match        https://*.inschool.fi/*
 // @grant        none
@@ -115,29 +115,33 @@ async function openHomeroomGrades(groupUrl){
 function improveHomeroomLayout(home,tools,groupUrl){
  if(home.dataset.wtLayout==='yes')return;
  const heading=[...home.querySelectorAll('h1,h2,h3,h4,h5,h6')].find(h=>txt(h.textContent)==='Ohjausryhmäsi');
- if(!heading)return;
  const classLink=[...home.querySelectorAll('a[href]')].find(a=>/^\/profiles\/classes\/\d+\/?$/.test(safePath(a)||''));
- if(!classLink)return;
- const allLinks=[...home.querySelectorAll('a[href]')].filter(a=>!a.closest('#wt-home-tools'));
- const attendance=allLinks.find(a=>/\/attendance_edit\/?(?:\?|$)/.test(safePath(a)||'')||/^Tuntimerkinnät$/i.test(txt(a.textContent)));
- const extras=allLinks.filter(a=>a!==attendance&&/viikoittain|viikottain|yhteenvetona/i.test(txt(a.textContent)));
- const primary=document.createElement('div');primary.id='wt-home-primary';primary.style.cssText='display:flex;flex-direction:column;align-items:flex-start;gap:7px;padding:9px 0';
- const grade=makeAction(lang==='fi'?'Arviointinäkymä':'Grade overview',()=>openHomeroomGrades(groupUrl));grade.style.cssText='display:inline-block;font-weight:700;font-size:15px;color:#125a90;text-decoration:underline;cursor:pointer;background:transparent;border:0;padding:0;margin:0';primary.append(grade);
- if(attendance){
-  attendance.style.cssText='display:inline-block;font-weight:600;font-size:14px;color:#125a90;text-decoration:underline';
-  primary.append(attendance);
- }
- if(extras.length){
-  const details=document.createElement('details');details.style.cssText='font-size:12px;color:#64798b';
-  const summary=label('summary',lang==='fi'?'Muut tuntimerkintänäkymät':'Other attendance views');summary.style.cssText='cursor:pointer;color:#536d83';
-  details.append(summary);
-  for(const a of extras){a.style.cssText='display:inline-block;margin:5px 10px 0 0;font-size:12px';details.append(a)}
-  primary.append(details);
- }
+ if(!heading||!classLink)return;
+ const links=[...home.querySelectorAll('a[href]')].filter(a=>!a.closest('#wt-home-tools'));
+ const attendance=links.find(a=>/\/attendance_edit\/?(?:\?|$)/.test(safePath(a)||'')||/^Tuntimerkinnät$/i.test(txt(a.textContent)));
+ const extras=links.filter(a=>a!==attendance&&/viikoittain|viikottain|yhteenvetona/i.test(txt(a.textContent)));
+ const layout=document.createElement('div');layout.id='wt-home-layout';layout.style.cssText='display:grid;grid-template-columns:minmax(0,1.5fr) minmax(210px,1fr);gap:16px;align-items:start;margin-top:10px';
+ const left=document.createElement('div');left.style.cssText='min-width:0;display:flex;flex-direction:column;gap:9px';
+ const top=document.createElement('div');top.style.cssText='display:flex;flex-wrap:wrap;align-items:baseline;gap:10px';
  const classLine=classLink.closest('h6')||classLink.parentElement;
- if(classLine&&classLine.parentElement)classLine.insertAdjacentElement('afterend',primary);
- else heading.insertAdjacentElement('afterend',primary);
- tools.querySelector('#wt-grade-old')?.remove();
+ classLink.style.cssText='font-weight:700;font-size:17px';
+ top.append(classLink);
+ const copy=tools.querySelector('button');if(copy)top.append(copy);
+ left.append(top);
+ const right=document.createElement('div');right.style.cssText='min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:7px;padding-left:12px;border-left:1px solid #e2e8ed';
+ const grade=makeAction(lang==='fi'?'▣  Arviointinäkymä':'▣  Grade overview',()=>openHomeroomGrades(groupUrl));
+ grade.style.cssText='font-weight:700;font-size:15px;color:#125a90;text-decoration:underline;background:none;border:0;padding:0;cursor:pointer';
+ right.append(grade);
+ if(attendance){attendance.style.cssText='font-weight:600;font-size:14px;display:inline-block';right.append(attendance)}
+ if(extras.length){const details=document.createElement('details');details.style.cssText='font-size:12px;color:#637789';const summary=label('summary',lang==='fi'?'Muut tuntimerkintänäkymät':'Other attendance views');details.append(summary);for(const a of extras){a.style.cssText='display:inline-block;margin:5px 9px 0 0;font-size:12px';details.append(a)}right.append(details)}
+ const messages=tools.querySelector('div');if(messages){messages.style.cssText='display:flex;flex-wrap:wrap;gap:2px 10px;align-items:center';left.append(messages)}
+ layout.append(left,right);
+ // Remove empty wrappers from Wilma's original layout after moving their links.
+ if(classLine&&classLine!==heading&&classLine.parentElement)classLine.remove();
+ tools.replaceChildren(layout);
+ heading.insertAdjacentElement('afterend',tools);
+ tools.style.cssText='border:0;margin:0;padding:0;font:13px/1.5 system-ui';
+ const style=document.createElement('style');style.textContent='@media(max-width:600px){#wt-home-layout{grid-template-columns:1fr!important}#wt-home-layout>div:nth-child(2){border-left:0!important;border-top:1px solid #e2e8ed;padding:10px 0 0!important}}';home.append(style);
  home.dataset.wtLayout='yes';
 }
 function swapDashboardSections(){
