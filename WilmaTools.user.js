@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.19.0
+// @version      0.19.1
 // @description  Local Wilma homeroom gradebook overview, FI/EN
 // @match        https://*.inschool.fi/profiles/classes/*
 // @grant        none
@@ -209,13 +209,11 @@ const go=el('button',cfg.lang==='fi'?'Valmistele Wilma-viesti':'Prepare Wilma me
  const people=unique.filter(p=>state.messageStudentIds.has(p.id));if(!people.length){alert(mt('empty'));return}
  const chosen=options[+templateSelect.value]||options[0];
  const body=people.length===1?chosen.body.replaceAll('{etunimi}',people[0].name.split(/\s+/)[0]).replaceAll('{name}',people[0].name.split(/\s+/)[0]):chosen.body.replaceAll('{etunimi}',cfg.lang==='fi'?'opiskelija':'student').replaceAll('{name}',cfg.lang==='fi'?'opiskelija':'student');
- const draft=chosen.subject+'\n\n'+body;
- try{await navigator.clipboard.writeText(draft)}catch{prompt(mt('noClipboard'),draft);return}
- const list=people.map(p=>p.name).join('\n');
- alert((cfg.lang==='fi'?'Viestiteksti kopioitu. Valitse Wilmassa nämä vastaanottajat ja tarkista valinta ennen lähettämistä:\n':'Message copied. Select and verify these recipients in Wilma before sending:\n')+list);
- window.open(location.origin+'/messages/compose','_blank','noopener');
+ const request={subject:chosen.subject,body,recipientsNames:people.map(p=>p.name),createdAt:Date.now()};
+ localStorage.setItem('wilmatools.composeRequest.v1',JSON.stringify(request));
+ window.open(location.origin+'/messages/compose#wt-library','_blank','noopener');
 };templateRow.append(go);
-const editor=el('button',cfg.lang==='fi'?'Muokkaa viestipohjia sivupaneelissa':'Manage templates in sidebar');editor.onclick=()=>window.dispatchEvent(new Event('wilmatools:open-templates'));templateRow.append(editor);
+const editor=el('button',cfg.lang==='fi'?'Muokkaa viestipohjia sivupaneelissa':'Manage templates in sidebar');editor.onclick=()=>window.open(location.origin+'/messages/compose#wt-library-templates','_blank','noopener');templateRow.append(editor);
 msgbox.append(templateRow);box.append(msgbox);
 const table=el('table');table.className='wt-issues';const h=el('tr');for(const v of ['student','course','grade','issue'])h.append(el('th',t(v)));table.append(h);flagged.sort((a,b)=>a.student.localeCompare(b.student,'fi')||a.name.localeCompare(b.name,'fi'));for(const r of flagged){const tr=el('tr');tr.append(el('td',r.student),el('td',r.name));const g=el('td',r.grade,'wt-grade'),[bg,fg]=color(r.grade,true);g.style.background=bg;g.style.color=fg;tr.append(g,el('td',t(flag(r.grade))));table.append(tr)}box.append(table);return}
 const cols=[...new Map(rows.map(r=>[r.key,r.name])).entries()].sort((a,b)=>a[1].localeCompare(b[1],'fi'));const by=new Map();for(const r of rows){if(!by.has(r.id))by.set(r.id,new Map());by.get(r.id).set(r.key,r)}const people=state.people.filter(s=>by.has(s.id));people.sort((a,b)=>state.sort&&state.sort!=='student'?(by.get(a.id)?.get(state.sort)?.grade||'').localeCompare(by.get(b.id)?.get(state.sort)?.grade||'','fi',{numeric:true}):a.name.localeCompare(b.name,'fi',{numeric:true})*(state.nameDescending?-1:1));box.append(el('p',t('found',{n:people.length,c:cols.length,r:rows.length})));const table=el('table'),head=el('thead'),hr=el('tr');const studentHeading=el('th',t('student')+' ↕');studentHeading.style.cursor='pointer';studentHeading.tabIndex=0;studentHeading.title=cfg.lang==='fi'?'Järjestä opiskelijan nimen mukaan':'Sort by student name';const sortStudents=()=>{state.nameDescending=state.sort==='student'?!state.nameDescending:false;state.sort='student';render()};studentHeading.onclick=sortStudents;studentHeading.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();sortStudents()}};hr.append(studentHeading);for(const [key,name]of cols){const th=el('th',name,'wt-heading');th.title=key.replaceAll('\u001f',' / ');th.tabIndex=0;th.onclick=()=>{state.sort=key;render()};th.onkeydown=e=>{if(e.key==='Enter'){state.sort=key;render()}};hr.append(th)}head.append(hr);table.append(head);const body=el('tbody');for(const s of people){const tr=el('tr');tr.append(el('td',s.name));for(const [key]of cols){const r=by.get(s.id)?.get(key),td=el('td',r?(r.grade||'…'):'—','wt-grade'),[bg,fg]=color(r?.grade||'',!!r);td.style.background=bg;td.style.color=fg;td.title=r?r.name+' | ECTS: '+r.ects:t('missing');tr.append(td)}body.append(tr)}table.append(body);box.append(table)}
