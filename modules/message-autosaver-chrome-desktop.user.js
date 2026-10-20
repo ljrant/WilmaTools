@@ -592,45 +592,16 @@
 
         await sleep(500);
 
-        /*
-          Step 3: restore form-level hidden inputs/chips as backup.
-          This is still useful if Wilma's visual state does not fully update.
-        */
-        const cell = $(SEL.recipientsCell);
-        if (false && cell && snapshot.html) {
-            cell.innerHTML = snapshot.html;
-            dispatchBasicEvents(cell);
-
-            $all('input[type="hidden"]', cell).forEach(input => {
-                dispatchBasicEvents(input);
-            });
-        }
-
-        await sleep(400);
-
-        /*
-          Step 4: try to force visual summary refresh.
-        */
-        const summaryClicks = await clickSummaryOrCloseButtons();
-
-        await sleep(300);
-
-        const visibleTextNow = cell
-            ? (cell.innerText || cell.textContent || '').trim()
-            : '';
-
-        const hiddenInputsNow = cell
-            ? $all('input[type="hidden"]', cell).length
-            : 0;
-
-        setIndicator(
-            `Wilma Autosaver: recipients restore done | clicked=${clicked} | hidden=${hiddenInputsNow} | visible=${visibleTextNow ? 'yes' : 'no'} | summary=${summaryClicks}`,
-            hiddenInputsNow || clicked ? 'ok' : 'error'
-        );
-
+        // Verify Wilma's actual hidden recipient values after picker interactions.
+        // Never inject raw saved HTML, which does not update Wilma's internal state.
+        const current=getRecipientsSnapshot();
+        const expected=(snapshot.inputs||[]).filter(x=>x.value).map(x=>x.name+'='+x.value);
+        const observed=new Set((current.inputs||[]).filter(x=>x.value).map(x=>x.name+'='+x.value));
+        const verified=expected.length>0&&expected.every(x=>observed.has(x));
+        if(!verified)console.warn('[WilmaTools] Recipient restoration not verified; inspect Wilma recipients manually.');
         updateInfo();
 
-        return Boolean(clicked);
+        return verified;
     }
 
     function collectDraft() {
@@ -682,7 +653,7 @@
       });
     }
     function library(){
-      const existing=document.getElementById('wt-message-library');if(existing){existing.hidden=!existing.hidden;return}
+      const existing=document.getElementById('wt-message-library');if(existing){existing.hidden=false;return}
       const aside=document.createElement('aside');aside.id='wt-message-library';
       aside.style.cssText='position:fixed;right:0;top:0;height:100vh;width:min(370px,93vw);background:white;color:#22394d;z-index:2147483400;box-shadow:-4px 0 18px #0002;padding:17px;overflow-y:auto;font:14px/1.45 system-ui;box-sizing:border-box';
       document.body.append(aside);
@@ -693,7 +664,7 @@
        aside.replaceChildren();const header=label('h2','Viestikirjasto');header.style.margin='0 0 10px';aside.append(header,b('Sulje',()=>aside.hidden=true));
        aside.append(b('Luonnokset',()=>{tab='drafts';draw()}),b('Viestipohjat',()=>{tab='templates';draw()}));
        if(tab==='drafts'){
-        const current=loadDraft();if(current)aside.append(b('Viimeisin automaattitallenne',()=>applySaved(current,true)));
+        const current=loadDraft();if(current)aside.append(b('Viimeisin automaattitallenne',()=>{if(confirm('Korvataanko viestin sisältö tallenteella?'))applySaved(current,true)}));
         for(const item of listHistory()){
          const row=label('div','');row.style.cssText='border-bottom:1px solid #ddd;padding:9px 0';
          row.append(label('strong',item.subject||'Nimetön viesti'),label('div',new Date(item.time).toLocaleString('fi-FI')));
@@ -716,7 +687,7 @@
        }
        const chk=document.createElement('input');chk.type='checkbox';chk.checked=!!item.recipients;
        const rec=label('label',' Tallenna myös nykyiset vastaanottajat');rec.prepend(chk);aside.append(rec);
-       aside.append(b('Tallenna',()=>{const all=getTemplates();const next={title:fields.title.value.trim(),category:fields.category.value.trim()||'Yleinen',subject:fields.subject.value,body:fields.body.value,recipients:chk.checked?getRecipientsSnapshot():null};if(!next.title)return;if(edit<0)all.push(next);else all[edit]=next;localStorage.setItem(TEMPLATE_KEY,JSON.stringify(all));draw()}),b('Takaisin',draw));
+       aside.append(b('Tallenna',()=>{const all=getTemplates();const next={title:fields.title.value.trim(),category:fields.category.value.trim()||'Yleinen',subject:fields.subject.value,body:fields.body.value,recipients:chk.checked?(edit>=0&&item.recipients?item.recipients:getRecipientsSnapshot()):null};if(!next.title)return;if(edit<0)all.push(next);else all[edit]=next;localStorage.setItem(TEMPLATE_KEY,JSON.stringify(all));draw()}),b('Takaisin',draw));
       }
       draw();
       window.addEventListener('wilmatools:drafts-changed',()=>{if(!aside.hidden&&tab==='drafts')draw()});
@@ -993,10 +964,6 @@
     }
 
     // The desktop toolbar can reopen the local controls without changing save/restore logic.
-    window.addEventListener('wilmatools:open-autosaver', () => {
-      const panel = document.querySelector('#wilma-as-panel');
-      if (panel) panel.style.display = 'block';
-      else createPanel();
-    });
+    window.addEventListener('wilmatools:open-autosaver', () => {const lib=document.getElementById('wt-message-library');if(lib)lib.hidden=false;else library()});
     ready(init);
 })();
