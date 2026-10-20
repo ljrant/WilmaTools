@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Desktop Sidebar
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.13.1
+// @version      0.14.0
 // @description  Finnish-first WilmaTools sidebar on every Wilma page
 // @match        https://*.inschool.fi/*
 // @grant        none
@@ -120,21 +120,32 @@ function improveHomeroomLayout(home,tools,groupUrl){
  const links=[...home.querySelectorAll('a[href]')].filter(a=>!a.closest('#wt-home-tools'));
  const attendance=links.find(a=>/\/attendance_edit\/?(?:\?|$)/.test(safePath(a)||'')||/^Tuntimerkinnät$/i.test(txt(a.textContent)));
  const extras=links.filter(a=>a!==attendance&&/viikoittain|viikottain|yhteenvetona/i.test(txt(a.textContent)));
- const layout=document.createElement('div');layout.id='wt-home-layout';layout.style.cssText='display:grid!important;grid-template-columns:minmax(0,1.4fr) minmax(220px,1fr)!important;gap:16px;align-items:start;margin:10px 0;width:100%;box-sizing:border-box';
- const left=document.createElement('div');left.style.cssText='min-width:0;display:flex;flex-direction:column;gap:9px';
- const top=document.createElement('div');top.style.cssText='display:flex;flex-wrap:wrap;align-items:baseline;gap:10px';
+ const pending=links.find(a=>/^\/profiles\/classes\/\d+\/pending\/?(?:\?|$)/.test(safePath(a)||''));
+ const layout=document.createElement('div');layout.id='wt-home-layout';layout.style.cssText='display:grid!important;grid-template-columns:minmax(0,1.4fr) minmax(220px,1fr)!important;gap:10px;align-items:start;margin:5px 0;width:100%;box-sizing:border-box';
+ const left=document.createElement('div');left.style.cssText='min-width:0;display:flex;flex-direction:column;gap:6px';
+ const top=document.createElement('div');top.style.cssText='display:flex;flex-wrap:wrap;align-items:baseline;gap:12px';
  const classLine=classLink.closest('h6')||classLink.parentElement;
- classLink.style.cssText='font-weight:700;font-size:17px';
+ classLink.style.cssText='font-weight:700;font-size:16px';
  top.append(classLink);
  const copy=tools.querySelector('button');if(copy)top.append(copy);
  left.append(top);
- const right=document.createElement('div');right.style.cssText='min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:7px;padding-left:12px;border-left:1px solid #e2e8ed';
+ const right=document.createElement('div');right.style.cssText='min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding-left:10px;border-left:1px solid #e2e8ed';
  const grade=makeAction(lang==='fi'?'▣  Arviointinäkymä':'▣  Grade overview',()=>openHomeroomGrades(groupUrl));
- grade.style.cssText='font-weight:700;font-size:15px;color:#125a90;text-decoration:underline;background:none;border:0;padding:0;cursor:pointer';
+ grade.style.cssText='font-weight:700;font-size:16px;color:#125a90;text-decoration:underline;background:none;border:0;padding:0;cursor:pointer';
  right.append(grade);
- if(attendance){attendance.style.cssText='font-weight:600;font-size:14px;display:inline-block';right.append(attendance)}
+ if(attendance){
+  const line=document.createElement('div');line.style.cssText='display:flex;align-items:center;flex-wrap:wrap;gap:8px;width:100%';
+  attendance.style.cssText='font-weight:600;font-size:15px;display:inline-block';
+  line.append(attendance);
+  if(pending){
+    pending.style.cssText='display:inline-block;float:none!important;margin:0!important;font-size:12px!important;white-space:nowrap';
+    line.append(pending);
+    const wrapper=line.closest('.pull-right');if(wrapper)wrapper.style.display='none';
+  }
+  right.append(line);
+ }
  if(extras.length){const details=document.createElement('details');details.style.cssText='font-size:12px;color:#637789';const summary=label('summary',lang==='fi'?'Muut tuntimerkintänäkymät':'Other attendance views');details.append(summary);for(const a of extras){a.style.cssText='display:inline-block;margin:5px 9px 0 0;font-size:12px';details.append(a)}right.append(details)}
- const messages=tools.querySelector('div');if(messages){messages.style.cssText='display:flex;flex-wrap:wrap;gap:2px 10px;align-items:center';left.append(messages)}
+ const messages=tools.querySelector('div');if(messages){messages.style.cssText='display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center';left.append(messages)}
  layout.append(left,right);
  // Remove empty wrappers from Wilma's original layout after moving their links.
  if(classLine&&classLine!==heading&&classLine.parentElement)classLine.remove();
@@ -142,8 +153,9 @@ function improveHomeroomLayout(home,tools,groupUrl){
  heading.insertAdjacentElement('afterend',tools);
  // Use a predictable full-width grid regardless of Wilma's original block styles.
  tools.style.display='block';tools.style.width='100%';
- console.info('[WilmaTools] Homeroom two-column layout v0.13.1 applied');
- tools.style.cssText='border:0;margin:0;padding:0;font:13px/1.5 system-ui';
+ console.info('[WilmaTools] Homeroom two-column layout v0.14.0 applied');
+ tools.style.cssText='border:0;margin:0;padding:0;font:15px/1.4 system-ui';
+ for(const a of tools.querySelectorAll('button,a')){if(!a.classList.contains('badge')){a.style.fontSize='15px';a.style.lineHeight='1.4'}}
  const style=document.createElement('style');style.textContent='@media(max-width:560px){#wt-home-layout{grid-template-columns:1fr!important}#wt-home-layout>div:nth-child(2){border-left:0!important;border-top:1px solid #e2e8ed;padding:10px 0 0!important}}';home.append(style);
  home.dataset.wtLayout='yes';
 }
