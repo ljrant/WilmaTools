@@ -19,7 +19,7 @@ Käyttäjäskripti toimii **kaikilla `*.inschool.fi`-aliverkkotunnuksilla** opis
 
 **[Install desktop toolbar / Asenna tietokoneen työkalupalkki](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/desktop-toolbar.user.js)**
 
-The toolbar adds a unified **WilmaTools** menu near the upper-right Wilma navigation area. Finnish is the default; switch to English in the menu. Each tool remains a **separate Tampermonkey userscript**, enabled/disabled independently from Tampermonkey. The menu opens the grade matrix on gradebook pages and the Chrome desktop autosaver on compose pages. Buttons for unrelated pages are disabled. Firefox Android uses its separate mobile UI.
+The toolbar now adds a persistent **WilmaTools sidebar trigger on all desktop Wilma pages**, with a single consistent tool menu. Finnish is the default; switch to English in the menu. Each tool remains a **separate Tampermonkey userscript**, enabled/disabled independently from Tampermonkey. The sidebar navigates to the applicable Wilma page; on a supported page it opens the installed module. Availability and behavior depend on which Tampermonkey scripts are installed/enabled. An extra shortcut on the Wilma start page opens the **last visited student gradebook** in the same school, if available; otherwise it points to Wilma's student list. Firefox Android uses its separate mobile UI.
 
 **Desktop installation / Asennus tietokoneella:** Install the toolbar **plus** whichever tool modules you want: `WilmaTools.user.js` for course progress, `modules/message-autosaver-chrome-desktop.user.js` for compose autosaving. Toolbar alone does not collect data or autosave drafts.
 
@@ -40,7 +40,7 @@ Both operate only on `https://*.inschool.fi/messages/compose*` and save the mess
 
 ## Drafting messages for flagged grades / Viestit huomioita vaativista arvosanoista
 
-On the gradebook module's **Huomiot / Students with issues** screen, select a single flagged student and edit the subject and message template. Use **Kopioi viesti ja avaa Wilman viestit / Copy message and open Wilma messages** to copy the draft locally and open the compose page. The template supports `{etunimi}` or `{name}` for the selected student's first name. **No recipients are set and no messages are sent automatically.** The teacher must select the correct recipient and paste/review the draft in Wilma before sending. Only flagged records within the active date and course filters are presented; verify completeness of the gradebook first.
+On the gradebook module's **Huomiot / Students with issues** screen, select a single flagged student and open a **separate message template editor** to edit the subject, body and preview. Use **Kopioi viesti ja avaa Wilman viestit / Copy message and open Wilma messages** to copy the draft locally and open the compose page. The template supports `{etunimi}` or `{name}` for the selected student's first name. **No recipients are set and no messages are sent automatically.** The teacher must select the correct recipient and paste/review the draft in Wilma before sending. Only flagged records within the active date and course filters are presented; verify completeness of the gradebook first.
 
 Huomiot-näkymässä voi valita yhden opiskelijan, muokata viestipohjaa ja kopioida viestin avattaessa Wilman viestisivun. Vastaanottaja valitaan itse ja viesti tarkistetaan ennen lähettämistä. Automaattista lähetystä ei tehdä.
 
@@ -73,3 +73,7 @@ The userscript runs in an existing authenticated Wilma session, fetches same-ori
 ## Development
 
 Files: `modules/desktop-toolbar.user.js` (shared desktop menu), `WilmaTools.user.js` (gradebook Tampermonkey module) and `index.html` (public landing page). Additional browser-specific modules live in `modules/`; they are installed separately. Future tools can be added as independently installed or enabled modules. No student data belongs in this repository.
+
+## Desktop interface / Tietokonekäyttöliittymä
+
+The sidebar is a **separately installed desktop Tampermonkey script** at `modules/desktop-toolbar.user.js`, active on all `*.inschool.fi` pages. It does not by itself activate disabled scripts. / Sivupaneeli on erillinen, kaikilla Wilman sivuilla näkyvä tietokoneen Tampermonkey-skripti. Muut moduulit on otettava käyttöön Tampermonkeyssa.
