@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.18.0
+// @version      0.18.1
 // @description  Local Wilma homeroom gradebook overview, FI/EN
 // @match        https://*.inschool.fi/profiles/classes/*
 // @grant        none
@@ -93,35 +93,54 @@ function parse(html,s){const doc=new DOMParser().parseFromString(html,'text/html
 let root=null;const $=s=>root?.querySelector(s);const el=(tag,txt='',cls='')=>{const e=document.createElement(tag);e.textContent=txt;if(cls)e.className=cls;return e};
 const style=document.createElement('style');style.textContent=`#wt-launch{position:fixed;right:16px;bottom:16px;z-index:2147483600;background:#17466f;color:white;padding:11px 16px;border:0;border-radius:9px;font-weight:700;cursor:pointer}#wt-screen{position:relative;width:100%;min-height:520px;background:transparent;font:14px system-ui,Arial;color:#17212b}#wt-panel{position:relative;display:flex;flex-direction:column;overflow:hidden;min-height:520px;max-height:82vh;border:1px solid #d4e0e8;border-radius:12px;background:#fff}#wt-header,#wt-toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid #ddd}#wt-header{background:#eef4fa}#wt-header strong{margin-right:auto;font-size:17px}#wt-panel button,#wt-panel select,#wt-panel input{font:inherit;padding:6px;border:1px solid #b6c3d1;border-radius:5px}#wt-status,#wt-note{padding:6px 16px;color:#4d5c69;font-size:12px}#wt-content{flex:1;overflow:auto;padding:10px 16px}#wt-content table{border-collapse:separate;border-spacing:0;font-size:12px}#wt-content th,#wt-content td{border:1px solid #d7dde2;padding:6px 8px;text-align:center}#wt-content th{position:sticky;top:0;z-index:2;background:#eaf0f6}#wt-content th:first-child,#wt-content td:first-child{position:sticky;left:0;z-index:3;text-align:left;min-width:145px;background:#fff}#wt-content th:first-child{z-index:4;background:#eaf0f6}.wt-heading{width:144px;min-width:144px;max-width:144px;white-space:normal;overflow-wrap:anywhere;word-break:normal;vertical-align:bottom;line-height:1.25;height:auto;min-height:65px;cursor:pointer}.wt-grade{font-weight:bold;min-width:38px}#wt-hide-list{max-height:145px;overflow:auto;padding:10px 18px;border-bottom:1px solid #ddd}#wt-hide-list label{display:block;margin:3px 0}#wt-content .wt-issues td{text-align:left}#wt-content .wt-issues .wt-grade{text-align:center}`;document.head.append(style);
 try{localStorage.setItem('wilmatools.lastGradebook',location.pathname+location.search)}catch{}
+let assessmentHost=null,assessmentLoaded=false,originalContent=[];
+function tabStrip(){return document.querySelector('ul.nav-tabs,.nav-tabs,[role="tablist"]')}
 function installAssessmentTab(){
- if(document.getElementById('wt-class-assessment-tab'))return;
- const tabs=document.querySelector('ul.nav-tabs,.nav-tabs,[role="tablist"]');
- if(!tabs)return;
+ const tabs=tabStrip();
+ if(!tabs||document.getElementById('wt-class-assessment-tab'))return;
  const item=document.createElement('li');item.id='wt-class-assessment-tab';
- const link=el('a',cfg.lang==='fi'?'WilmaTools · Arviointinäkymä':'WilmaTools · Grade overview');
- link.href='#wt-assessment';link.style.cssText='display:block;padding:11px 14px;background:#e3f2ff;color:#155c94;font-weight:700;border:1px solid #8cbadd;border-radius:6px 6px 0 0';
- link.onclick=e=>{e.preventDefault();activateAssessment()};
- item.append(link);tabs.append(item);
+ const link=el('a',cfg.lang==='fi'?'Arviointinäkymä':'Grade overview');
+ link.href='#wt-assessment';link.style.cssText='display:block;padding:10px 14px;background:#e7f3ff;color:#155b91;font-weight:700;border:1px solid #9fc6e5;border-radius:6px 6px 0 0';
+ link.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();activateAssessment()});
+ item.append(link);
+ const links=[...tabs.querySelectorAll('a')];
+ const support=links.find(a=>/Tuen tilastot|Support statistics/i.test(a.textContent));
+ if(support){const li=support.closest('li');if(li&&li.parentElement===tabs)li.after(item);else tabs.append(item)}
+ else tabs.append(item);
+ // Wilma's own tab navigation must restore native content.
+ tabs.addEventListener('click',e=>{
+  if(e.target.closest('#wt-class-assessment-tab'))return;
+  restoreNativeContent();
+ },true);
 }
-let assessmentHost=null,assessmentLoaded=false;
+function restoreNativeContent(){
+ if(!assessmentHost)return;
+ assessmentHost.hidden=true;
+ for(const node of originalContent){node.style.display=node.dataset.wtPreviousDisplay||'';delete node.dataset.wtPreviousDisplay}
+ const item=document.getElementById('wt-class-assessment-tab');item?.classList.remove('active');
+}
 function activateAssessment(){
  installAssessmentTab();
+ const tabs=tabStrip();if(!tabs)return;
  if(!assessmentHost){
   assessmentHost=el('section');assessmentHost.id='wt-assessment-host';
-  assessmentHost.style.cssText='margin:15px 0;min-height:400px;width:100%';
-  const tabs=document.querySelector('ul.nav-tabs,.nav-tabs,[role="tablist"]');
-  (tabs?.parentElement||document.body).insertAdjacentElement('afterend',assessmentHost);
+  assessmentHost.style.cssText='width:100%;margin:12px 0;min-height:460px';
+  // Insert at the start of Wilma's content area, not in an overlay.
+  const wrapper=tabs.closest('.panel,.card,.box')||tabs.parentElement;
+  wrapper.insertAdjacentElement('afterend',assessmentHost);
+  originalContent=[...wrapper.parentElement.children].filter(n=>n!==wrapper&&n!==assessmentHost&&n.tagName!=='SCRIPT'&&n.tagName!=='STYLE');
  }
- const visible=assessmentHost.hidden;
- if(root&&visible){assessmentHost.hidden=false;return}
+ for(const node of originalContent){node.dataset.wtPreviousDisplay=node.style.display;node.style.display='none'}
  assessmentHost.hidden=false;
+ tabs.querySelectorAll('li.active').forEach(n=>n.classList.remove('active'));
+ document.getElementById('wt-class-assessment-tab')?.classList.add('active');
  if(!root)open();
  if(!assessmentLoaded){assessmentLoaded=true;collect()}
 }
 installAssessmentTab();
 let tabTries=0;const tabTimer=setInterval(()=>{installAssessmentTab();if(++tabTries>=12)clearInterval(tabTimer)},700);
 function status(x){if($('#wt-status'))$('#wt-status').textContent=x}
-function open(){state.people=[];root=el('div');root.id='wt-screen';root.innerHTML=`<div id="wt-panel" role="dialog" aria-modal="true"><div id="wt-header"><strong id="wt-title"></strong><button id="wt-collect"></button><button id="wt-stop"></button><button id="wt-matrix"></button><button id="wt-issues"></button><button id="wt-settings"></button><button id="wt-close"></button></div><div id="wt-toolbar"><label><select id="wt-period"><option value="school"></option><option value="custom"></option><option value="all"></option></select></label><label id="wt-year-label"><select id="wt-year"></select></label><label id="wt-from-label" hidden><span id="wt-from-caption"></span> <input id="wt-from" type="date"></label><label id="wt-to-label" hidden><span id="wt-to-caption"></span> <input id="wt-to" type="date"></label><input id="wt-search" type="search"><button id="wt-hide"></button><button id="wt-export"></button></div><div id="wt-settingsbox" hidden style="padding:10px 16px"><label id="wt-lang-label"></label> <select id="wt-lang"><option value="fi">Suomi</option><option value="en">English</option></select> <label><input id="wt-enabled" type="checkbox"> <span id="wt-enabled-label"></span></label></div><div id="wt-hide-list" hidden></div><div id="wt-status"></div><div id="wt-note"></div><div id="wt-content"></div></div>`;assessmentHost.append(root);for(let y=sy()-7;y<=sy()+2;y++){const op=el('option',y+'–'+(y+1));op.value=y;$('#wt-year').append(op)}$('#wt-year').value=state.year;$('#wt-period').value=state.period;$('#wt-lang').value=cfg.lang;$('#wt-enabled').checked=cfg.enabled;$('#wt-search').value=state.term;$('#wt-from').value=state.from;$('#wt-to').value=state.to;$('#wt-close').onclick=()=>{assessmentHost.hidden=true};$('#wt-collect').onclick=collect;$('#wt-stop').onclick=()=>{state.stop=true};$('#wt-matrix').onclick=()=>{state.mode='matrix';render()};$('#wt-issues').onclick=()=>{state.mode='issues';render()};$('#wt-settings').onclick=()=>{$('#wt-settingsbox').hidden=!$('#wt-settingsbox').hidden};$('#wt-hide').onclick=()=>{$('#wt-hide-list').hidden=!$('#wt-hide-list').hidden};$('#wt-lang').onchange=e=>{cfg.lang=e.target.value;save();translate();render()};$('#wt-enabled').onchange=e=>{cfg.enabled=e.target.checked;save();translate();render()};$('#wt-period').onchange=e=>{state.period=e.target.value;dateUI();render()};$('#wt-year').onchange=e=>{state.year=+e.target.value;render()};$('#wt-from').onchange=e=>{state.from=e.target.value;render()};$('#wt-to').onchange=e=>{state.to=e.target.value;render()};$('#wt-search').oninput=e=>{state.term=e.target.value;render()};$('#wt-export').onclick=download;translate();status(cfg.lang==='fi'?'Valmis hakemaan ryhmän tiedot.':'Ready to load group data.');render()}
+function open(){state.people=[];root=el('div');root.id='wt-screen';root.innerHTML=`<div id="wt-panel" role="region" aria-label="WilmaTools"><div id="wt-header"><strong id="wt-title"></strong><button id="wt-collect"></button><button id="wt-stop"></button><button id="wt-matrix"></button><button id="wt-issues"></button><button id="wt-settings"></button><button id="wt-close"></button></div><div id="wt-toolbar"><label><select id="wt-period"><option value="school"></option><option value="custom"></option><option value="all"></option></select></label><label id="wt-year-label"><select id="wt-year"></select></label><label id="wt-from-label" hidden><span id="wt-from-caption"></span> <input id="wt-from" type="date"></label><label id="wt-to-label" hidden><span id="wt-to-caption"></span> <input id="wt-to" type="date"></label><input id="wt-search" type="search"><button id="wt-hide"></button><button id="wt-export"></button></div><div id="wt-settingsbox" hidden style="padding:10px 16px"><label id="wt-lang-label"></label> <select id="wt-lang"><option value="fi">Suomi</option><option value="en">English</option></select> <label><input id="wt-enabled" type="checkbox"> <span id="wt-enabled-label"></span></label></div><div id="wt-hide-list" hidden></div><div id="wt-status"></div><div id="wt-note"></div><div id="wt-content"></div></div>`;assessmentHost.append(root);for(let y=sy()-7;y<=sy()+2;y++){const op=el('option',y+'–'+(y+1));op.value=y;$('#wt-year').append(op)}$('#wt-year').value=state.year;$('#wt-period').value=state.period;$('#wt-lang').value=cfg.lang;$('#wt-enabled').checked=cfg.enabled;$('#wt-search').value=state.term;$('#wt-from').value=state.from;$('#wt-to').value=state.to;$('#wt-close').onclick=restoreNativeContent;$('#wt-collect').onclick=collect;$('#wt-stop').onclick=()=>{state.stop=true};$('#wt-matrix').onclick=()=>{state.mode='matrix';render()};$('#wt-issues').onclick=()=>{state.mode='issues';render()};$('#wt-settings').onclick=()=>{$('#wt-settingsbox').hidden=!$('#wt-settingsbox').hidden};$('#wt-hide').onclick=()=>{$('#wt-hide-list').hidden=!$('#wt-hide-list').hidden};$('#wt-lang').onchange=e=>{cfg.lang=e.target.value;save();translate();render()};$('#wt-enabled').onchange=e=>{cfg.enabled=e.target.checked;save();translate();render()};$('#wt-period').onchange=e=>{state.period=e.target.value;dateUI();render()};$('#wt-year').onchange=e=>{state.year=+e.target.value;render()};$('#wt-from').onchange=e=>{state.from=e.target.value;render()};$('#wt-to').onchange=e=>{state.to=e.target.value;render()};$('#wt-search').oninput=e=>{state.term=e.target.value;render()};$('#wt-export').onclick=download;translate();status(cfg.lang==='fi'?'Valmis hakemaan ryhmän tiedot.':'Ready to load group data.');render()}
 function translate(){$('#wt-title').textContent=t('title');for(const [id,key] of [['collect','collect'],['stop','stop'],['matrix','matrix'],['issues','issues'],['settings','settings'],['close','close'],['hide','hide'],['export','export']])$('#wt-'+id).textContent=t(key);for(const [i,k] of [['school','school'],['custom','custom'],['all','all']])$('#wt-period').querySelector('[value="'+i+'"]').textContent=t(k);$('#wt-lang-label').textContent=t('language');$('#wt-enabled-label').textContent=t('enabled');$('#wt-search').placeholder=t('search');$('#wt-from-caption').textContent=t('from');$('#wt-to-caption').textContent=t('to');$('#wt-note').textContent=t('warning')+' '+t('dateNote');dateUI()}
 function dateUI(){$('#wt-year-label').hidden=state.period!=='school';$('#wt-from-label').hidden=state.period!=='custom';$('#wt-to-label').hidden=state.period!=='custom'}
 function selected(){let a=state.rows.filter(r=>!cfg.hidden.has(r.key));if(state.period==='school')a=a.filter(r=>r.date&&r.date>=state.year+'-08-01'&&r.date<=(state.year+1)+'-07-31');if(state.period==='custom')a=a.filter(r=>r.date&&state.from&&state.to&&state.from<=state.to&&r.date>=state.from&&r.date<=state.to);if(state.term.trim()){let q=state.term.toLocaleLowerCase('fi');a=a.filter(r=>[r.student,r.name,r.group,r.subject].some(x=>x.toLocaleLowerCase('fi').includes(q)))}return a}
