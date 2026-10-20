@@ -38,6 +38,12 @@ Both operate only on `https://*.inschool.fi/messages/compose*` and save the mess
 
 **Testing status:** Adapted from the supplied Firefox Mobile script. Browser-specific operation and compatibility with varying Wilma implementations have not been verified.
 
+## Drafting messages for flagged grades / Viestit huomioita vaativista arvosanoista
+
+On the gradebook module's **Huomiot / Students with issues** screen, select a single flagged student and edit the subject and message template. Use **Kopioi viesti ja avaa Wilman viestit / Copy message and open Wilma messages** to copy the draft locally and open the compose page. The template supports `{etunimi}` or `{name}` for the selected student's first name. **No recipients are set and no messages are sent automatically.** The teacher must select the correct recipient and paste/review the draft in Wilma before sending. Only flagged records within the active date and course filters are presented; verify completeness of the gradebook first.
+
+Huomiot-näkymässä voi valita yhden opiskelijan, muokata viestipohjaa ja kopioida viestin avattaessa Wilman viestisivun. Vastaanottaja valitaan itse ja viesti tarkistetaan ennen lähettämistä. Automaattista lähetystä ei tehdä.
+
 ## Features / Ominaisuudet
 
 - FI default; EN available in Settings / Suomi oletuksena, englanti asetuksista
