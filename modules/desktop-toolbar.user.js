@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Desktop Sidebar
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.11.0
+// @version      0.12.0
 // @description  Finnish-first WilmaTools sidebar on every Wilma page
 // @match        https://*.inschool.fi/*
 // @grant        none
@@ -99,6 +99,61 @@ function gradingLinks(doc){
  }return found;
 }
 function compactBlock(){const block=document.createElement('div');block.className='wt-inline-tools';block.style.cssText='margin:5px 0 4px;padding:6px 0;border-top:1px solid #dfe8ee;font:13px/1.5 system-ui';return block}
+function improveHomeroomLayout(home,tools,last){
+ if(home.dataset.wtLayout==='yes')return;
+ const heading=[...home.querySelectorAll('h1,h2,h3,h4,h5,h6')].find(h=>txt(h.textContent)==='Ohjausryhmäsi');
+ if(!heading)return;
+ const classLink=[...home.querySelectorAll('a[href]')].find(a=>/^\/profiles\/classes\/\d+\/?$/.test(safePath(a)||''));
+ if(!classLink)return;
+ const allLinks=[...home.querySelectorAll('a[href]')].filter(a=>!a.closest('#wt-home-tools'));
+ const attendance=allLinks.find(a=>/\/attendance_edit\/?(?:\?|$)/.test(safePath(a)||'')||/^Tuntimerkinnät$/i.test(txt(a.textContent)));
+ const extras=allLinks.filter(a=>a!==attendance&&/viikoittain|viikottain|yhteenvetona/i.test(txt(a.textContent)));
+ const primary=document.createElement('div');primary.id='wt-home-primary';primary.style.cssText='display:flex;flex-direction:column;align-items:flex-start;gap:7px;padding:9px 0';
+ if(last){const grade=makeLink(lang==='fi'?'Arviointinäkymä':'Grade overview',last);grade.style.cssText='display:inline-block;font-weight:700;font-size:15px;color:#125a90;text-decoration:underline';primary.append(grade);}
+ if(attendance){
+  attendance.style.cssText='display:inline-block;font-weight:600;font-size:14px;color:#125a90;text-decoration:underline';
+  primary.append(attendance);
+ }
+ if(extras.length){
+  const details=document.createElement('details');details.style.cssText='font-size:12px;color:#64798b';
+  const summary=label('summary',lang==='fi'?'Muut tuntimerkintänäkymät':'Other attendance views');summary.style.cssText='cursor:pointer;color:#536d83';
+  details.append(summary);
+  for(const a of extras){a.style.cssText='display:inline-block;margin:5px 10px 0 0;font-size:12px';details.append(a)}
+  primary.append(details);
+ }
+ const classLine=classLink.closest('h6')||classLink.parentElement;
+ if(classLine&&classLine.parentElement)classLine.insertAdjacentElement('afterend',primary);
+ else heading.insertAdjacentElement('afterend',primary);
+ tools.querySelector('#wt-grade-old')?.remove();
+ home.dataset.wtLayout='yes';
+}
+function swapDashboardSections(){
+ const groups=getSection('Ryhmät tässä jaksossa'),alerts=getSection('Ilmoitukset');
+ if(!groups||!alerts||groups===alerts)return;
+ // Move complete dashboard blocks rather than headings or individual items.
+ function block(el){
+  let node=el;
+  for(let depth=0;depth<5&&node.parentElement;depth++){
+   const parent=node.parentElement;
+   if(parent===document.body)break;
+   const titles=[...parent.querySelectorAll('h1,h2,h3,h4,h5,h6')].map(x=>txt(x.textContent));
+   if(titles.includes('Ryhmät tässä jaksossa')&&titles.includes('Ilmoitukset'))break;
+   node=parent;
+  }return node;
+ }
+ let a=block(groups),b=block(alerts);
+ // Find sibling-level wrappers; avoid moving nested main containers.
+ while(a.parentElement&&b.parentElement&&a.parentElement!==b.parentElement){
+   if(a.parentElement.contains(b))break;
+   if(b.parentElement.contains(a))break;
+   if(a.parentElement.parentElement&&a.parentElement!==document.body)a=a.parentElement;
+   if(b.parentElement.parentElement&&b.parentElement!==document.body)b=b.parentElement;
+ }
+ if(a===b||a.contains(b)||b.contains(a)||!a.parentElement||a.parentElement!==b.parentElement)return;
+ if(a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_PRECEDING){
+  b.before(a);
+ }
+}
 function attachHome(){
  const home=getSection('Ohjausryhmäsi'),period=getSection('Ryhmät tässä jaksossa');
  const classAnchor=home&&[...home.querySelectorAll('a[href]')].find(a=>/^\/profiles\/classes\/\d+\/?$/.test(safePath(a)||''));
@@ -106,13 +161,13 @@ function attachHome(){
   const url=safePath(classAnchor),tools=compactBlock();tools.id='wt-home-tools';
   // Original class title remains the navigable Wilma link.
   const last=route();
-  if(last)tools.append(makeLink(lang==='fi'?'Arviointinäkymä':'Grade overview',last));
+  // Primary grade overview is inserted next to the native class title.
   tools.append(makeAction(lang==='fi'?'Kopioi opiskelijalista':'Copy student list',()=>copyStudents(url)));
   const messages=document.createElement('div');
   messages.append(makeAction(lang==='fi'?'Viesti opiskelijoille':'Message students',()=>groupMessage(url,'students')));
   messages.append(makeAction(lang==='fi'?'Viesti huoltajille':'Message guardians',()=>groupMessage(url,'guardians')));
   messages.append(makeAction(lang==='fi'?'Viesti opiskelijoille ja huoltajille':'Message students and guardians',()=>groupMessage(url,'both')));
-  tools.append(messages);home.append(tools);
+  tools.append(messages);home.append(tools);improveHomeroomLayout(home,tools,last);
  }
  if(!period||period.dataset.wtCourseLinks==='yes')return;
  const courses=new Map();
@@ -147,9 +202,9 @@ function attachHome(){
  if(wrap.childNodes.length)period.append(wrap);
 }
 if(['/', '/index','/dashboard','/home'].includes(location.pathname)){
- attachHome();
+ attachHome();swapDashboardSections();
  // Wilma can render the homepage blocks after DOMContentLoaded.
  let tries=0;
- const interval=setInterval(()=>{attachHome();if(++tries>=12)clearInterval(interval)},1000);
+ const interval=setInterval(()=>{attachHome();swapDashboardSections();if(++tries>=12)clearInterval(interval)},1000);
 }
 })();
