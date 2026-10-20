@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Desktop Sidebar
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.16.2
+// @version      0.16.3
 // @description  Finnish-first WilmaTools sidebar on every Wilma page
 // @match        https://*.inschool.fi/*
 // @grant        none
@@ -75,7 +75,7 @@ function draftSidebar(){
  const status=label('p','');const saved=localStorage.getItem('wilma-compose-autosave:'+location.hostname+location.pathname);status.textContent=saved?(lang==='fi'?'Tallenne löytyy tästä selaimesta.':'Saved draft exists in this browser.'):(lang==='fi'?'Ei tallennetta tässä selaimessa.':'No saved draft in this browser.');panel.append(status);
 }
 function draw(){panel.replaceChildren();panel.append(label('h2','WilmaTools'));const close=label('button',x('close'));close.onclick=()=>{panel.hidden=true};panel.append(close);
-const tools=[{name:'progress',click:()=>{if(grade.test(location.pathname)&&document.getElementById('wt-launch'))window.dispatchEvent(new Event('wilmatools:open-progress'));else linkProgress()}},{name:'autosave',click:()=>{if(location.pathname.startsWith('/messages/compose'))window.dispatchEvent(new Event('wilmatools:open-autosaver'));else location.assign('/messages/compose')}},{name:'write',click:()=>location.assign('/messages/compose')}];
+const tools=[{name:'progress',click:()=>{if(grade.test(location.pathname)&&document.getElementById('wt-launch'))window.dispatchEvent(new Event('wilmatools:open-progress'));else linkProgress()}},{name:'autosave',click:draftSidebar},{name:'write',click:()=>location.assign('/messages/compose')}];
 tools.push({name:'templates',click:templateEditor},{name:'drafts',click:draftSidebar});
 for(const a of tools){const item=label('div','');item.className='item';item.append(label('strong',x(a.name)));const b=label('button',x('open'));b.onclick=a.click;item.append(b);panel.append(item)}
 const setting=label('div','');setting.className='item';setting.append(label('strong',x('settings')));const select=document.createElement('select');for(const [code,name]of [['fi','Suomi'],['en','English']]){const op=label('option',name);op.value=code;select.append(op)}select.value=lang;select.onchange=()=>{lang=select.value;let s={};try{s=JSON.parse(localStorage.getItem(KEY)||'{}')}catch{}s.lang=lang;localStorage.setItem(KEY,JSON.stringify(s));window.dispatchEvent(new CustomEvent('wilmatools:language',{detail:lang}));draw()};setting.append(label('span',x('language')+' '),select);panel.append(setting,label('p',x('hint')));
@@ -158,7 +158,7 @@ async function openHomeroomGrades(groupUrl){
   for(const a of doc.querySelectorAll('a[href]')){
    const p=safePath(a);
    const m=p&&p.match(/^\/profiles\/students\/(\d+)(?:\/|$|\?)/);
-   if(m){dest='/profiles/students/'+m[1]+'/choices?view=gradebook';break}
+   if(m){dest='/profiles/students/'+m[1]+'/choices?view=gradebook&wt=open';break}
   }
   if(dest)location.assign(dest);
   else info(lang==='fi'?'Ohjausryhmän opiskelijaluettelo ei ollut saatavilla sivun HTML:ssä. Avaa ryhmä ja opiskelijan opintosuoritukset ensin.':'No student links found in the homeroom HTML. Open the group and a student gradebook first.');
