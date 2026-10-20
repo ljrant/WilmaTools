@@ -99,7 +99,20 @@ function gradingLinks(doc){
  }return found;
 }
 function compactBlock(){const block=document.createElement('div');block.className='wt-inline-tools';block.style.cssText='margin:5px 0 4px;padding:6px 0;border-top:1px solid #dfe8ee;font:13px/1.5 system-ui';return block}
-function improveHomeroomLayout(home,tools,last){
+async function openHomeroomGrades(groupUrl){
+ try{
+  const doc=await groupDoc(groupUrl);
+  let dest=null;
+  for(const a of doc.querySelectorAll('a[href]')){
+   const p=safePath(a);
+   const m=p&&p.match(/^\/profiles\/students\/(\d+)(?:\/|$|\?)/);
+   if(m){dest='/profiles/students/'+m[1]+'/choices?view=gradebook';break}
+  }
+  if(dest)location.assign(dest);
+  else info(lang==='fi'?'Ohjausryhmän opiskelijaluettelo ei ollut saatavilla sivun HTML:ssä. Avaa ryhmä ja opiskelijan opintosuoritukset ensin.':'No student links found in the homeroom HTML. Open the group and a student gradebook first.');
+ }catch(e){info(e.message)}
+}
+function improveHomeroomLayout(home,tools,groupUrl){
  if(home.dataset.wtLayout==='yes')return;
  const heading=[...home.querySelectorAll('h1,h2,h3,h4,h5,h6')].find(h=>txt(h.textContent)==='Ohjausryhmäsi');
  if(!heading)return;
@@ -109,7 +122,7 @@ function improveHomeroomLayout(home,tools,last){
  const attendance=allLinks.find(a=>/\/attendance_edit\/?(?:\?|$)/.test(safePath(a)||'')||/^Tuntimerkinnät$/i.test(txt(a.textContent)));
  const extras=allLinks.filter(a=>a!==attendance&&/viikoittain|viikottain|yhteenvetona/i.test(txt(a.textContent)));
  const primary=document.createElement('div');primary.id='wt-home-primary';primary.style.cssText='display:flex;flex-direction:column;align-items:flex-start;gap:7px;padding:9px 0';
- if(last){const grade=makeLink(lang==='fi'?'Arviointinäkymä':'Grade overview',last);grade.style.cssText='display:inline-block;font-weight:700;font-size:15px;color:#125a90;text-decoration:underline';primary.append(grade);}
+ const grade=makeAction(lang==='fi'?'Arviointinäkymä':'Grade overview',()=>openHomeroomGrades(groupUrl));grade.style.cssText='display:inline-block;font-weight:700;font-size:15px;color:#125a90;text-decoration:underline;cursor:pointer;background:transparent;border:0;padding:0;margin:0';primary.append(grade);
  if(attendance){
   attendance.style.cssText='display:inline-block;font-weight:600;font-size:14px;color:#125a90;text-decoration:underline';
   primary.append(attendance);
@@ -149,14 +162,13 @@ function attachHome(){
  if(home&&classAnchor&&!home.querySelector('#wt-home-tools')){
   const url=safePath(classAnchor),tools=compactBlock();tools.id='wt-home-tools';
   // Original class title remains the navigable Wilma link.
-  const last=route();
-  // Primary grade overview is inserted next to the native class title.
+  // Open the current teacher's actual homeroom; do not reuse an unrelated last student.
   tools.append(makeAction(lang==='fi'?'Kopioi opiskelijalista':'Copy student list',()=>copyStudents(url)));
   const messages=document.createElement('div');
   messages.append(makeAction(lang==='fi'?'Viesti opiskelijoille':'Message students',()=>groupMessage(url,'students')));
   messages.append(makeAction(lang==='fi'?'Viesti huoltajille':'Message guardians',()=>groupMessage(url,'guardians')));
   messages.append(makeAction(lang==='fi'?'Viesti opiskelijoille ja huoltajille':'Message students and guardians',()=>groupMessage(url,'both')));
-  tools.append(messages);home.append(tools);improveHomeroomLayout(home,tools,last);
+  tools.append(messages);home.append(tools);improveHomeroomLayout(home,tools,url);
  }
  if(!period||period.dataset.wtCourseLinks==='yes')return;
  const courses=new Map();
