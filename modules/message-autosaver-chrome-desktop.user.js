@@ -16,7 +16,7 @@
 
     // Drafts are sensitive: stored only on this origin in localStorage; clear after sending.
     const STORAGE_KEY = 'wilma-compose-autosave:' + location.hostname + location.pathname;
-    const HISTORY_KEY='wilmatools.draftHistory.v1', TEMPLATE_KEY='wilmatools.messageTemplates.v1';
+    const HISTORY_KEY='wilmatools.draftHistory.v1', TEMPLATE_KEY='wilmatools.messageTemplates.v1', REQUEST_KEY='wilmatools.composeRequest.v1';
 
     const SEL = {
         subject: 'input#wff-Subject',
@@ -630,6 +630,7 @@
     }
 
     function safeRead(key,fallback){try{return JSON.parse(localStorage.getItem(key)||'null')||fallback}catch{return fallback}}
+    function safeReadSession(key,fallback){try{return JSON.parse(sessionStorage.getItem(key)||'null')||fallback}catch{return fallback}}
     function listHistory(){return safeRead(HISTORY_KEY,[]).filter(x=>x&&typeof x.subject==='string').slice(0,35)}
     function historySave(draft){
       const history=listHistory();
@@ -677,6 +678,8 @@
         aside.append(b('Uusi viestipohja',()=>{edit=-1;editor()}));
         data.forEach((item,i)=>{if(category!=='Kaikki'&&(item.category||'Yleinen')!==category)return;const row=label('div','');row.style.cssText='border-bottom:1px solid #ddd;padding:10px 0';row.append(label('strong',item.title),label('div',item.category||'Yleinen'));row.append(b('Käytä',()=>applySaved(item,true)),b('Muokkaa',()=>{edit=i;editor()}),b('Poista',()=>{if(confirm('Poistetaanko pohja?')){data.splice(i,1);localStorage.setItem(TEMPLATE_KEY,JSON.stringify(data));draw()}}));aside.append(row)});
        }
+       const names=safeReadSession('wilmatools.recipientReminder.v1',[]);
+       if(names.length){const note=label('div','Valitse Wilmassa vastaanottajat: '+names.join(', '));note.style.cssText='padding:9px;background:#fff6da;border:1px solid #e3cd91;border-radius:6px';aside.append(note);aside.append(b('Vastaanottajat tarkistettu',()=>{sessionStorage.removeItem('wilmatools.recipientReminder.v1');draw()}))}
        const hint=label('p','Vastaanottajat on tarkistettava Wilmassa ennen lähettämistä. Tallenteet säilyvät vain tässä selaimessa.');hint.style.color='#687987';aside.append(hint)
       }
       function editor(){
@@ -695,6 +698,18 @@
     function addLibraryEntry(){
       if(document.getElementById('wt-library-entry'))return;
       const button=document.createElement('button');button.id='wt-library-entry';button.type='button';button.textContent='Viestikirjasto';button.style.cssText='position:fixed;right:12px;bottom:12px;padding:10px 15px;background:#164c77;color:#fff;border:0;border-radius:8px;z-index:2147483300;cursor:pointer';button.onclick=library;document.body.append(button);
+      if(location.hash==='#wt-library'||location.hash==='#wt-library-templates')library();
+      const request=safeRead(REQUEST_KEY,null);
+      if(request&&Date.now()-request.createdAt<120000&&Array.isArray(request.recipientsNames)){
+        localStorage.removeItem(REQUEST_KEY);
+        const current=collectDraft();
+        if(!isMeaningfulDraft(current)){
+          const safe=document.createElement('div');safe.textContent=String(request.body||'');
+          applySaved({subject:String(request.subject||''),bodyHtml:safe.innerHTML.replaceAll('\n','<br>')},false);
+        }
+        sessionStorage.setItem('wilmatools.recipientReminder.v1',JSON.stringify(request.recipientsNames));
+        library();
+      }
       window.addEventListener('wilmatools:open-library',()=>{const lib=document.getElementById('wt-message-library');if(lib)lib.hidden=false;else library()});
     }
     function saveDraft(reason) {
