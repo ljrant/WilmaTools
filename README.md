@@ -44,6 +44,12 @@ On the gradebook module's **Huomiot / Students with issues** screen, select a si
 
 Huomiot-näkymässä voi valita yhden opiskelijan, muokata viestipohjaa ja kopioida viestin avattaessa Wilman viestisivun. Vastaanottaja valitaan itse ja viesti tarkistetaan ennen lähettämistä. Automaattista lähetystä ei tehdä.
 
+## Student selector count / Opiskelijamäärä
+
+Wilma may omit the currently open student from the dropdown links. WilmaTools includes the **current gradebook's student** even if the dropdown only lists classmates. When the current student's name is unavailable in those links, the script asks for their name locally at collection time. This name is only held in the active browser tab. Verify that the total matches your group and that no student is duplicated before using the report.
+
+Wilman opiskelijavalikko ei välttämättä sisällä juuri avoinna olevan opiskelijan omaa linkkiä. WilmaTools lisää nykyisen opiskelijan mukaan. Tarvittaessa nimi kysytään paikallisesti tietoja kerättäessä. Tarkista ryhmän opiskelijamäärä ja mahdolliset kaksoiskappaleet ennen tulosten käyttöä.
+
 ## Features / Ominaisuudet
 
 - FI default; EN available in Settings / Suomi oletuksena, englanti asetuksista
