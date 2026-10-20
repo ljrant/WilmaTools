@@ -19,8 +19,10 @@ Käyttäjäskripti toimii **kaikilla `*.inschool.fi`-aliverkkotunnuksilla** opis
 
 Two standalone Tampermonkey modules are available. **Install only the one appropriate to your browser** (you may have different installations on your phone and computer):
 
-- **Firefox on Android / Firefox Androidissa:** [Install userscript](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-firefox-android.user.js)
-- **Chrome on desktop / Chrome tietokoneella:** [Install userscript](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-chrome-desktop.user.js)
+- **Firefox on Android / Firefox Androidissa — EXPERIMENTAL / KOKEELLINEN, only Firefox on Android phones / vain Android-puhelimen Firefoxissa:** [Install userscript](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-firefox-android.user.js)
+- **Chrome on desktop / Chrome tietokoneella — Google Chrome on a computer / tietokoneen Chrome-selain:** [Install userscript](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-chrome-desktop.user.js)
+
+Firefox Android has a [dedicated information page](https://ljrant.github.io/WilmaTools/firefox-android.html) / [erillinen esittelysivu](https://ljrant.github.io/WilmaTools/firefox-android.html). It is experimental and requires a compatible userscript manager in Firefox on Android, not Chrome Android or Firefox desktop.
 
 Both operate only on `https://*.inschool.fi/messages/compose*` and save the message subject, rich-text body, and recipient snapshot into browser localStorage. They provide manual save, restore, refresh recipients, and clear controls, and offer restoration when the compose form is empty.
 
