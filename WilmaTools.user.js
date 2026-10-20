@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.8.0
+// @version      0.8.1
 // @description  Local Wilma homeroom gradebook overview, FI/EN
 // @match        https://*.inschool.fi/profiles/students/*/choices*
 // @grant        none
@@ -27,7 +27,26 @@ fi:{heading:'Viestit huomiota vaativille opiskelijoille',select:'Valitse',subjec
 en:{heading:'Messages for students needing attention',select:'Select',subject:'Subject',body:'Message template',prepare:'Copy message and open Wilma messages',info:'Prepare messages for each student. Select the recipient in Wilma and review before sending. No automatic sending.',empty:'Select a student first.',noClipboard:'Could not copy to clipboard. Copy manually.',sampleSubject:'Course progress',sampleBody:'Hello {etunimi},\n\nI would like to discuss how your studies are progressing. Please get in touch so we can agree on next steps.\n\nBest regards,\nHomeroom teacher',selected:'Selected students: {n}',next:'Next',open:'Open messages',notice:'Recipients are not filled in automatically. Choose the correct person in Wilma.'}};
 const mt=k=>messageStrings[cfg.lang][k];
 const flag=g=>['4','U','K'].includes(g.toUpperCase())?'critical':['5','6'].includes(g)?'low':'';
-function discover(){const lists=[...document.querySelectorAll('li')].map(li=>[...li.querySelectorAll('a[href]')].map(a=>{try{const u=new URL(a.getAttribute('href'),location.href),m=u.origin===location.origin&&u.pathname.match(p);return m?{id:m[1],name:tidy(a.textContent),url:u.origin+u.pathname+'?view=gradebook'}:null}catch{return null}}).filter(Boolean));lists.sort((a,b)=>new Set(b.map(x=>x.id)).size-new Set(a.map(x=>x.id)).size);return [...new Map((lists[0]||[]).map(x=>[x.id,x])).values()]}
+function discover(){
+const lists=[...document.querySelectorAll('li')].map(li=>[...li.querySelectorAll('a[href]')].map(a=>{
+try{const u=new URL(a.getAttribute('href'),location.href),m=u.origin===location.origin&&u.pathname.match(p);
+return m?{id:m[1],name:tidy(a.textContent),url:u.origin+u.pathname+'?view=gradebook'}:null}catch{return null}
+}).filter(Boolean));
+lists.sort((a,b)=>new Set(b.map(x=>x.id)).size-new Set(a.map(x=>x.id)).size);
+const people=new Map((lists[0]||[]).map(x=>[x.id,x]));
+// Wilma's dropdown may list only the *other* students.
+// Include the student whose gradebook is open, even when there is no dropdown link.
+const current=location.pathname.match(p);
+if(current&&!people.has(current[1])){
+  const dropdown=(lists[0]||[]).length;
+  // Do not guess the student's name from the page or expose their numeric ID.
+  people.set(current[1],{id:current[1],
+    name:cfg.lang==='fi'?'Nykyinen opiskelija (tarkista nimi)':'Current student (verify name)',
+    url:location.origin+location.pathname+'?view=gradebook'});
+  console.info('[WilmaTools] Current student added to dropdown list; please verify identity.',{dropdownLinks:dropdown,total:people.size});
+}
+return [...people.values()];
+}
 function parse(html,s){const doc=new DOMParser().parseFromString(html,'text/html');const table=[...doc.querySelectorAll('table')].find(a=>{const h=tidy([...a.querySelectorAll('th')].map(x=>x.textContent).join(' ')).toLowerCase();return h.includes('arvosana')&&(h.includes('ects')||h.includes('laajuus'))});if(!table)throw Error('Gradebook table not found');let group='',subject='',rows=[];for(const tr of table.querySelectorAll('tr')){const level=[...tr.classList].find(x=>/^level\d+$/.test(x)),c=[...tr.children].filter(x=>x.matches('td,th'));if(!level||c.length<3)continue;const name=tidy(c[0].textContent);if(!name)continue;if(level==='level1'){group=name;subject='';continue}if(level==='level2'){subject=name;continue}if(level!=='level3')continue;rows.push({id:s.id,student:s.name,name,group,subject,key:[group,subject,name].join('\u001f'),grade:tidy(c[1].textContent),ects:tidy(c[2].textContent),date:isoDate(c[3]?.textContent),teacher:tidy(c[4]?.textContent)})}return rows}
 let root=null;const $=s=>root?.querySelector(s);const el=(tag,txt='',cls='')=>{const e=document.createElement(tag);e.textContent=txt;if(cls)e.className=cls;return e};
 const style=document.createElement('style');style.textContent=`#wt-launch{position:fixed;right:16px;bottom:16px;z-index:2147483600;background:#17466f;color:white;padding:11px 16px;border:0;border-radius:9px;font-weight:700;cursor:pointer}#wt-screen{position:fixed;inset:0;z-index:2147483601;background:#0009;font:14px system-ui,Arial;color:#17212b}#wt-panel{position:absolute;inset:3%;display:flex;flex-direction:column;overflow:hidden;border-radius:12px;background:#fff}#wt-header,#wt-toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid #ddd}#wt-header{background:#eef4fa}#wt-header strong{margin-right:auto;font-size:17px}#wt-panel button,#wt-panel select,#wt-panel input{font:inherit;padding:6px;border:1px solid #b6c3d1;border-radius:5px}#wt-status,#wt-note{padding:6px 16px;color:#4d5c69;font-size:12px}#wt-content{flex:1;overflow:auto;padding:10px 16px}#wt-content table{border-collapse:separate;border-spacing:0;font-size:12px}#wt-content th,#wt-content td{border:1px solid #d7dde2;padding:6px 8px;text-align:center}#wt-content th{position:sticky;top:0;z-index:2;background:#eaf0f6}#wt-content th:first-child,#wt-content td:first-child{position:sticky;left:0;z-index:3;text-align:left;min-width:145px;background:#fff}#wt-content th:first-child{z-index:4;background:#eaf0f6}.wt-heading{width:144px;min-width:144px;max-width:144px;white-space:normal;overflow-wrap:anywhere;word-break:normal;vertical-align:bottom;line-height:1.25;height:auto;min-height:65px;cursor:pointer}.wt-grade{font-weight:bold;min-width:38px}#wt-hide-list{max-height:145px;overflow:auto;padding:10px 18px;border-bottom:1px solid #ddd}#wt-hide-list label{display:block;margin:3px 0}#wt-content .wt-issues td{text-align:left}#wt-content .wt-issues .wt-grade{text-align:center}`;document.head.append(style);
