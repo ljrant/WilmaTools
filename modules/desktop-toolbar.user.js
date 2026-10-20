@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Desktop Sidebar
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.17.2
+// @version      0.18.0
 // @description  Finnish-first WilmaTools sidebar on every Wilma page
 // @match        https://*.inschool.fi/*
 // @grant        none
@@ -29,51 +29,16 @@ function linkProgress(){if(/^\/profiles\/classes\/\d+\/?$/.test(location.pathnam
 const TEMPLATE_KEY='wilmatools.messageTemplates.v1';
 function templates(){try{const a=JSON.parse(localStorage.getItem(TEMPLATE_KEY)||'[]');return Array.isArray(a)?a.filter(v=>v&&typeof v.title==='string'&&typeof v.subject==='string'&&typeof v.body==='string').slice(0,50):[]}catch{return []}}
 function saveTemplates(data){localStorage.setItem(TEMPLATE_KEY,JSON.stringify(data))}
-function templateEditor(){
- panel.replaceChildren();
- const h=label('h2',lang==='fi'?'Viestipohjat':'Message templates');panel.append(h);
- const back=label('button',lang==='fi'?'← Työkalut':'← Tools');back.onclick=draw;panel.append(back);
- const list=document.createElement('div');panel.append(list);
- const editing=document.createElement('div');editing.style.cssText='border-top:1px solid #dce6ef;padding-top:12px;margin-top:12px';panel.append(editing);
- let edit=-1;
- function fields(){
-  editing.replaceChildren();
-  const data=templates(),item=data[edit]||{title:'',subject:'',body:''};
-  const entries={};
-  for(const [key,title,area]of [['title',lang==='fi'?'Pohjan nimi':'Template name',false],['subject',lang==='fi'?'Aihe':'Subject',false],['body',lang==='fi'?'Viesti':'Message',true]]){
-   const lab=label('label',title);lab.style.cssText='display:block;font-weight:600;margin:9px 0';
-   const i=document.createElement(area?'textarea':'input');if(area)i.rows=8;i.value=item[key];i.style.cssText='display:block;width:100%;box-sizing:border-box;margin-top:5px;padding:9px;border:1px solid #a9bfd2;border-radius:6px;font:14px/1.5 system-ui';lab.append(i);editing.append(lab);entries[key]=i;
-  }
-  const save=label('button',lang==='fi'?'Tallenna pohja':'Save template');
-  save.onclick=()=>{const v={title:entries.title.value.trim(),subject:entries.subject.value,body:entries.body.value};if(!v.title)return alert(lang==='fi'?'Anna pohjalle nimi.':'Enter a name.');const next=templates();if(edit<0)next.push(v);else next[edit]=v;saveTemplates(next);edit=-1;display()};
-  editing.append(save);
-  const note=label('p',lang==='fi'?'Tallentuu tämän Wilma-palvelimen selaimen localStorage-muistiin. Älä sisällytä pysyviä opiskelijatietoja pohjiin.':'Saved in localStorage on this Wilma origin. Avoid storing student information in templates.');editing.append(note);
+function openMessageLibrary(section){
+ if(location.pathname.startsWith('/messages/compose')){
+  panel.hidden=true;
+  window.dispatchEvent(new Event('wilmatools:open-library'));
+  return;
  }
- function display(){
-  list.replaceChildren();
-  templates().forEach((item,index)=>{
-   const row=label('div','');row.style.cssText='padding:9px 0;border-bottom:1px solid #e5edf3';
-   row.append(label('strong',item.title));
-   const open=label('button',lang==='fi'?'Muokkaa':'Edit');open.style.margin='5px';open.onclick=()=>{edit=index;fields()};
-   const del=label('button',lang==='fi'?'Poista':'Delete');del.onclick=()=>{if(!confirm(lang==='fi'?'Poistetaanko viestipohja?':'Delete template?'))return;const data=templates();data.splice(index,1);saveTemplates(data);edit=-1;display()};
-   row.append(document.createElement('br'),open,del);list.append(row);
-  });
-  fields();
- }
- display();
+ location.assign('/messages/compose#wt-library'+(section==='templates'?'-templates':''));
 }
-function draftSidebar(){
- panel.replaceChildren();panel.append(label('h2',lang==='fi'?'Viestiluonnokset':'Message drafts'));
- const back=label('button',lang==='fi'?'← Työkalut':'← Tools');back.onclick=draw;panel.append(back);
- if(!location.pathname.startsWith('/messages/compose')){
-  panel.append(label('p',lang==='fi'?'Tallennustoiminnot ovat käytettävissä viestin kirjoitussivulla.':'Draft controls are available on the compose page.'));
-  const open=label('button',lang==='fi'?'Avaa viestin kirjoitus':'Open compose');open.onclick=()=>location.assign('/messages/compose');panel.append(open);return;
- }
- const info=label('p',lang==='fi'?'Automaattitallennus säilyttää aiheen, tekstin ja vastaanottajatiedot paikallisesti. Tarkista vastaanottajat ennen lähetystä.':'Autosave stores subject, body and recipient information locally. Verify recipients before sending.');panel.append(info);
- const actions=[['wilma-as-save',lang==='fi'?'Tallenna nyt':'Save now'],['wilma-as-restore',lang==='fi'?'Palauta luonnos':'Restore draft'],['wilma-as-refresh-recipients',lang==='fi'?'Päivitä vastaanottajat':'Refresh recipients'],['wilma-as-clear',lang==='fi'?'Poista tallenne':'Clear saved draft']];
- for(const [id,name]of actions){const b=label('button',name);b.style.cssText='display:block;margin:9px 0';b.onclick=()=>{const original=document.getElementById(id);if(original)original.click();else alert(lang==='fi'?'Automaattitallennin ei ole käytössä. Ota se käyttöön Tampermonkeyssa.':'Autosaver is not active. Enable it in Tampermonkey.')};panel.append(b)}
- const status=label('p','');const saved=localStorage.getItem('wilma-compose-autosave:'+location.hostname+location.pathname);status.textContent=saved?(lang==='fi'?'Tallenne löytyy tästä selaimesta.':'Saved draft exists in this browser.'):(lang==='fi'?'Ei tallennetta tässä selaimessa.':'No saved draft in this browser.');panel.append(status);
-}
+function templateEditor(){openMessageLibrary('templates')}
+function draftSidebar(){openMessageLibrary('drafts')}
 function draw(){panel.replaceChildren();panel.append(label('h2','WilmaTools'));const close=label('button',x('close'));close.onclick=()=>{panel.hidden=true};panel.append(close);
 const tools=[{name:'autosave',click:draftSidebar},{name:'write',click:()=>location.assign('/messages/compose')}];
 tools.push({name:'templates',click:templateEditor},{name:'drafts',click:draftSidebar});
