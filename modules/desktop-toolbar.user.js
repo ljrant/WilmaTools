@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Desktop Sidebar
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.16.3
+// @version      0.16.4
 // @description  Finnish-first WilmaTools sidebar on every Wilma page
 // @match        https://*.inschool.fi/*
 // @grant        none
@@ -231,37 +231,35 @@ function attachHome(){
  if(home&&classAnchor&&home.querySelector('#wt-home-tools')&&home.dataset.wtLayout!=='yes'){
   improveHomeroomLayout(home,home.querySelector('#wt-home-tools'),safePath(classAnchor));
  }
- if(!period||period.dataset.wtCourseLinks==='yes')return;
- const courses=new Map();
- for(const a of period.querySelectorAll('a[href]')){
-  const href=safePath(a);
-  if(!href||!/^\/(?:groups|profiles\/classes)\/\d+\/?$/.test(href))continue;
-  const name=txt(a.textContent);if(!name||courses.has(href))continue;
-  courses.set(href,{name,href,anchor:a});
+ if(!period)return;
+ // Preserve every native Wilma course row, title, icon and link unchanged.
+ // Add only an envelope icon after the existing action icons, once per group.
+ const groups=new Map();
+ for(const anchor of period.querySelectorAll('a[href]')){
+   const href=safePath(anchor);
+   if(href&&/^\/(?:groups|profiles\/classes)\/\d+\/?$/.test(href)&&!groups.has(href))groups.set(href,anchor);
  }
- if(!courses.size)return;
- period.dataset.wtCourseLinks='yes';
- const wrap=document.createElement('div');wrap.id='wt-course-links';wrap.style.cssText='border-top:1px solid #dfe8ee;padding-top:8px;margin-top:8px;font:13px/1.5 system-ui';
- for(const group of courses.values()){
-  const row=document.createElement('div');row.style.cssText='padding:5px 0;border-bottom:1px solid #edf1f5';
-  // Keep Wilma's existing course-name link. Only add compact actions below it.
-  const title=group.anchor;
-  title.style.fontWeight='600';
-  const sub=document.createElement('div');sub.style.cssText='display:flex;gap:0;flex-wrap:wrap';
-  sub.append(makeAction(lang==='fi'?'Viesti ryhmälle':'Message group',()=>groupMessage(group.href,'group')));
-  row.append(sub);const parent=title.closest('li')||title.parentElement;
-  if(parent&&parent!==period)parent.append(row);else wrap.append(row);
-  // Fetch links automatically; no "show links" button.
-  groupDoc(group.href).then(doc=>{
-   if(!row.isConnected)return;
-   const found=gradingLinks(doc);
-   const frag=document.createDocumentFragment();
-   if(found.grading)frag.append(makeLink(lang==='fi'?'Arviointikirja':'Gradebook',found.grading));
-   if(found.attendance)frag.append(makeLink(lang==='fi'?'Tuntimerkinnät':'Attendance',found.attendance));
-   sub.prepend(frag);
-  }).catch(()=>{});
+ for(const [groupUrl,anchor]of groups){
+   let container=anchor.parentElement;
+   let icons=null;
+   for(let level=0;level<6&&container&&container!==period;level++,container=container.parentElement){
+     const candidates=[...container.querySelectorAll('div,span,ul')].filter(el=>{
+       if(el.querySelector('#wt-group-mail'))return false;
+       const actions=[...el.querySelectorAll('a[href]')].filter(a=>a!==anchor&&(a.querySelector('svg,i,[class*="icon"]')||a.children.length===0&&!txt(a.textContent)));
+       return actions.length>=3&&actions.length<=6&&el.querySelectorAll('a[href]').length<=8;
+     });
+     if(candidates.length){icons=candidates.sort((x,y)=>x.querySelectorAll('a[href]').length-y.querySelectorAll('a[href]').length)[0];break}
+   }
+   if(!icons||icons.querySelector('[data-wt-group-mail]'))continue;
+   const mail=document.createElement('button');mail.type='button';mail.dataset.wtGroupMail='yes';
+   mail.setAttribute('aria-label',lang==='fi'?'Viesti ryhmälle':'Message group');
+   mail.title=lang==='fi'?'Viesti ryhmälle':'Message group';
+   mail.style.cssText='display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;padding:0 3px;margin:0;border:0;background:transparent;color:#0096d6;cursor:pointer';
+   mail.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>';
+   mail.onclick=()=>groupMessage(groupUrl,'group');
+   icons.append(mail);
  }
- if(wrap.childNodes.length)period.append(wrap);
+
 }
 function swapTwoHomepageBoxes(){
  const headings=[...document.querySelectorAll('h1,h2,h3,h4,h5,h6')];
