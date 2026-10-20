@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.8.1
+// @version      0.8.2
 // @description  Local Wilma homeroom gradebook overview, FI/EN
 // @match        https://*.inschool.fi/profiles/students/*/choices*
 // @grant        none
@@ -27,6 +27,26 @@ fi:{heading:'Viestit huomiota vaativille opiskelijoille',select:'Valitse',subjec
 en:{heading:'Messages for students needing attention',select:'Select',subject:'Subject',body:'Message template',prepare:'Copy message and open Wilma messages',info:'Prepare messages for each student. Select the recipient in Wilma and review before sending. No automatic sending.',empty:'Select a student first.',noClipboard:'Could not copy to clipboard. Copy manually.',sampleSubject:'Course progress',sampleBody:'Hello {etunimi},\n\nI would like to discuss how your studies are progressing. Please get in touch so we can agree on next steps.\n\nBest regards,\nHomeroom teacher',selected:'Selected students: {n}',next:'Next',open:'Open messages',notice:'Recipients are not filled in automatically. Choose the correct person in Wilma.'}};
 const mt=k=>messageStrings[cfg.lang][k];
 const flag=g=>['4','U','K'].includes(g.toUpperCase())?'critical':['5','6'].includes(g)?'low':'';
+function currentStudentName(){
+  // Wilma breadcrumb: ... > group > student name [dropdown]. Never read names from grade tables.
+  const current=location.pathname.match(p);
+  if(!current)return '';
+  const selectors=['li.dropdown:has(ul a[href*="/profiles/students/"]) > a','li.dropdown:has(ul a[href*="/profiles/students/"]) > button','[aria-label="breadcrumb"] li:last-child','ol.breadcrumb li:last-child','.breadcrumb li:last-child'];
+  for(const selector of selectors){
+    for(const node of document.querySelectorAll(selector)){
+      const copy=node.cloneNode(true);
+      copy.querySelectorAll('ul,svg,.caret,[aria-hidden="true"],button').forEach(x=>x.remove());
+      const name=tidy(copy.textContent).replace(/[▾▼⌄]+$/,'').trim();
+      if(name && name.length<120 && !/^(Opiskelijat|Students|Valinnat|Choices|Opinnot)$/i.test(name))return name;
+    }
+  }
+  // The dropdown's direct anchor without href contains the selected student's name in some Wilma layouts.
+  const list=[...document.querySelectorAll('li')].find(li=>li.querySelectorAll('a[href*="/profiles/students/"]').length>=2);
+  if(list){const label=[...list.children].find(x=>x.matches('a:not([href]),button'));
+    if(label){const copy=label.cloneNode(true);copy.querySelectorAll('span[aria-hidden],svg,.caret').forEach(x=>x.remove());const name=tidy(copy.textContent);if(name&&name.length<120)return name;}
+  }
+  return '';
+}
 function discover(){
 const lists=[...document.querySelectorAll('li')].map(li=>[...li.querySelectorAll('a[href]')].map(a=>{
 try{const u=new URL(a.getAttribute('href'),location.href),m=u.origin===location.origin&&u.pathname.match(p);
@@ -41,7 +61,7 @@ if(current&&!people.has(current[1])){
   const dropdown=(lists[0]||[]).length;
   // Do not guess the student's name from the page or expose their numeric ID.
   people.set(current[1],{id:current[1],
-    name:cfg.lang==='fi'?'Nykyinen opiskelija (tarkista nimi)':'Current student (verify name)',
+    name:currentStudentName() || (cfg.lang==='fi'?'Nykyinen opiskelija':'Current student'),
     url:location.origin+location.pathname+'?view=gradebook'});
   console.info('[WilmaTools] Current student added to dropdown list; please verify identity.',{dropdownLinks:dropdown,total:people.size});
 }
@@ -77,6 +97,6 @@ window.open(location.origin+'/messages/compose','_blank','noopener');
 };msgbox.append(prepare);box.append(msgbox);
 const table=el('table');table.className='wt-issues';const h=el('tr');for(const v of ['student','course','grade','issue'])h.append(el('th',t(v)));table.append(h);flagged.sort((a,b)=>a.student.localeCompare(b.student,'fi')||a.name.localeCompare(b.name,'fi'));for(const r of flagged){const tr=el('tr');tr.append(el('td',r.student),el('td',r.name));const g=el('td',r.grade,'wt-grade'),[bg,fg]=color(r.grade,true);g.style.background=bg;g.style.color=fg;tr.append(g,el('td',t(flag(r.grade))));table.append(tr)}box.append(table);return}
 const cols=[...new Map(rows.map(r=>[r.key,r.name])).entries()].sort((a,b)=>a[1].localeCompare(b[1],'fi'));const by=new Map();for(const r of rows){if(!by.has(r.id))by.set(r.id,new Map());by.get(r.id).set(r.key,r)}const people=state.people.filter(s=>by.has(s.id));if(state.sort)people.sort((a,b)=>(by.get(a.id)?.get(state.sort)?.grade||'').localeCompare(by.get(b.id)?.get(state.sort)?.grade||'','fi',{numeric:true}));box.append(el('p',t('found',{n:people.length,c:cols.length,r:rows.length})));const table=el('table'),head=el('thead'),hr=el('tr');hr.append(el('th',t('student')));for(const [key,name]of cols){const th=el('th',name,'wt-heading');th.title=key.replaceAll('\u001f',' / ');th.tabIndex=0;th.onclick=()=>{state.sort=key;render()};th.onkeydown=e=>{if(e.key==='Enter'){state.sort=key;render()}};hr.append(th)}head.append(hr);table.append(head);const body=el('tbody');for(const s of people){const tr=el('tr');tr.append(el('td',s.name));for(const [key]of cols){const r=by.get(s.id)?.get(key),td=el('td',r?(r.grade||'…'):'—','wt-grade'),[bg,fg]=color(r?.grade||'',!!r);td.style.background=bg;td.style.color=fg;td.title=r?r.name+' | ECTS: '+r.ects:t('missing');tr.append(td)}body.append(tr)}table.append(body);box.append(table)}
-async function collect(){state.people=discover();if(!state.people.length)return status(t('none'));if(!confirm(t('confirm',{n:state.people.length})))return;const unnamed=state.people.find(x=>x.name.includes('(tarkista nimi)')||x.name.includes('(verify name)'));if(unnamed){const name=prompt(cfg.lang==='fi'?'Anna avoinna olevan opiskelijan nimi (vain paikalliseen taulukkoon):':'Enter the currently viewed student name (local table only):','');if(name&&tidy(name))unnamed.name=tidy(name)}state.busy=true;state.stop=false;state.rows=[];state.errors=[];render();for(let i=0;i<state.people.length;i++){if(state.stop||!root)break;const s=state.people[i];status(t('reading',{i:i+1,n:state.people.length}));try{const res=await fetch(s.url,{credentials:'same-origin',redirect:'follow',cache:'no-store'});if(!res.ok||new URL(res.url).origin!==location.origin||!p.test(new URL(res.url).pathname))throw Error('Unexpected HTTP response');const data=parse(await res.text(),s);if(!data.length)state.errors.push('Student '+(i+1)+': 0 courses');state.rows.push(...data)}catch(e){state.errors.push('Student '+(i+1)+': '+e.message)}render();if(i<state.people.length-1&&!state.stop)await new Promise(r=>setTimeout(r,650))}state.busy=false;if(root){status(t('finished',{n:state.rows.length,e:state.errors.length}));render()}}
+async function collect(){state.people=discover();if(!state.people.length)return status(t('none'));if(!confirm(t('confirm',{n:state.people.length})))return;state.busy=true;state.stop=false;state.rows=[];state.errors=[];render();for(let i=0;i<state.people.length;i++){if(state.stop||!root)break;const s=state.people[i];status(t('reading',{i:i+1,n:state.people.length}));try{const res=await fetch(s.url,{credentials:'same-origin',redirect:'follow',cache:'no-store'});if(!res.ok||new URL(res.url).origin!==location.origin||!p.test(new URL(res.url).pathname))throw Error('Unexpected HTTP response');const data=parse(await res.text(),s);if(!data.length)state.errors.push('Student '+(i+1)+': 0 courses');state.rows.push(...data)}catch(e){state.errors.push('Student '+(i+1)+': '+e.message)}render();if(i<state.people.length-1&&!state.stop)await new Promise(r=>setTimeout(r,650))}state.busy=false;if(root){status(t('finished',{n:state.rows.length,e:state.errors.length}));render()}}
 function download(){const header=['Student','Course','Category','Subject','Grade','ECTS','Completion date','Teacher'];const cells=[header,...selected().map(r=>[r.student,r.name,r.group,r.subject,r.grade,r.ects,r.date,r.teacher])];const quote=v=>{let s=String(v??'');if(/^\s*[=+@\-\t\r]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"'};const csv='\ufeff'+cells.map(x=>x.map(quote).join(';')).join('\r\n');const u=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),a=el('a');a.href=u;a.download='wilmatools_progress.csv';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)}
 })();
