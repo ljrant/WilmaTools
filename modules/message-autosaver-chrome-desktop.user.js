@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Message Autosaver (Chrome Desktop)
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.6.0
+// @version      0.7.0
 // @description  Chrome desktop local Wilma compose autosave: subject, body and recipients.
 // @match        https://*.inschool.fi/messages/compose*
 // @run-at       document-start
@@ -139,6 +139,7 @@
         if (state) el.classList.add(state);
 
         el.textContent = text;
+        if(window.__wilmaToolsHub) el.style.display='none';
     }
 
     function createPanel() {
@@ -188,6 +189,7 @@
             panel.style.display = 'none';
         });
 
+        if (window.__wilmaToolsHub) panel.style.display = 'none';
         updateInfo();
     }
 
@@ -922,5 +924,11 @@
         }, 1000);
     }
 
+    // The desktop toolbar can reopen the local controls without changing save/restore logic.
+    window.addEventListener('wilmatools:open-autosaver', () => {
+      const panel = document.querySelector('#wilma-as-panel');
+      if (panel) panel.style.display = 'block';
+      else createPanel();
+    });
     ready(init);
 })();
