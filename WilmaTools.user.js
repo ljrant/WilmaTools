@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         WilmaTools
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.4.0
+// @version      0.4.1
 // @description  Local Wilma homeroom gradebook overview, FI/EN
-// @match        https://espoo.inschool.fi/profiles/students/*/choices*
+// @match        https://*.inschool.fi/profiles/students/*/choices*
 // @grant        none
 // @run-at       document-idle
 // ==/UserScript==
