@@ -58,7 +58,7 @@ async function discoverHomeroom(){
   for(let node=heading.parentElement,depth=0;node&&depth<5;node=node.parentElement,depth++){
    const headings=[...node.querySelectorAll('h1,h2,h3,h4,h5,h6')];
    if(headings.some(h=>h!==heading&&/^Ryhmät tässä jaksossa$|^Ilmoitukset$/i.test(tidy(h.textContent))))break;
-   classLink=[...node.querySelectorAll('a[href]')].find(a=>{try{const u=new URL(a.getAttribute('href'),location.origin);return u.origin===location.origin&&/^\\/profiles\\/classes\\/\\d+\\/?$/.test(u.pathname)}catch{return false}});
+   classLink=[...node.querySelectorAll('a[href]')].find(a=>{try{const u=new URL(a.getAttribute('href'),location.origin);return u.origin===location.origin&&/^\/profiles\/classes\/\d+\/?$/.test(u.pathname)}catch{return false}});
    if(classLink)break;
   }
   if(!classLink)return null;
@@ -70,7 +70,7 @@ async function discoverHomeroom(){
   for(const a of doc.querySelectorAll('a[href]')){
    try{
     const u=new URL(a.getAttribute('href'),location.origin);
-    const m=u.origin===location.origin&&u.pathname.match(/^\\/profiles\\/students\\/(\\d+)(?:\\/|$)/);
+    const m=u.origin===location.origin&&u.pathname.match(/^\/profiles\/students\/(\d+)(?:\/|$)/);
     const name=tidy(a.textContent);
     if(m&&name&&name.length<120&&!students.has(m[1]))students.set(m[1],{id:m[1],name,url:location.origin+'/profiles/students/'+m[1]+'/choices?view=gradebook'});
    }catch{}
@@ -178,7 +178,7 @@ async function collect(){
  if(!root){state.busy=false;return}
  state.people=lookup.people;state.source=lookup.source;
  if(!state.people.length){state.busy=false;status(t('none'));render();return}
- if(!confirm(t('confirm',{n:state.people.length})+'\\n'+(cfg.lang==='fi'?'Lähde: ':'Source: ')+(lookup.source==='homeroom'?(cfg.lang==='fi'?'ohjausryhmän sivu':'homeroom page'):(cfg.lang==='fi'?'opiskelijavalikko (varamenetelmä)':'student dropdown (fallback)')))){state.busy=false;render();return}
+ if(!confirm(t('confirm',{n:state.people.length})+'\n'+(cfg.lang==='fi'?'Lähde: ':'Source: ')+(lookup.source==='homeroom'?(cfg.lang==='fi'?'ohjausryhmän sivu':'homeroom page'):(cfg.lang==='fi'?'opiskelijavalikko (varamenetelmä)':'student dropdown (fallback)')))){state.busy=false;render();return}
  let completed=0,failed=0,empty=0;
  render();
  for(let i=0;i<state.people.length;i++){
