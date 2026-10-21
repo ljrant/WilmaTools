@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Message Autosaver (Chrome Desktop)
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.9.4
+// @version      0.9.5
 // @description  Chrome desktop local Wilma compose autosave: subject, body and recipients.
 // @match        https://*.inschool.fi/messages/compose*
 // @run-at       document-start
@@ -645,10 +645,11 @@
       window.dispatchEvent(new Event('wilmatools:drafts-changed'));
     }
     // WMT/TXT v1: shareable templates only. No snapshots or draft history exported.
+    function parseOpt(v){return v==='true'?true:v==='false'?false:null}
     function exportWmt(items){
       const clean=x=>String(x||'').replace(/\r/g,'').replace(/\n/g,' ');
       return '# WilmaTools Templates v1\n\n'+items.map(t=>{
-        const fields=[['id',t.id||''],['nimi',t.title],['kategoria',t.category||'Yleinen'],['vastaanottajat',t.recipientRule||'ei_valintaa'],['aihe',t.subject||''],['viestityyppi',t.messageMode||'group'],['ryhmat',(t.recipientGroups||[]).join('; ')],['henkilot',(t.recipientIndividuals||[]).join('; ')]];
+        const fields=[['id',t.id||''],['nimi',t.title],['kategoria',t.category||'Yleinen'],['vastaanottajat',t.recipientRule||'ei_valintaa'],['aihe',t.subject||''],['viestityyppi',t.messageMode||'group'],['ryhmat',(t.recipientGroups||[]).join('; ')],['henkilot',(t.recipientIndividuals||[]).join('; ')],['nayta_vastaanottajien_nimet',t.options?.showRecipients===true?'true':t.options?.showRecipients===false?'false':''],['nayta_vastaukset',t.options?.collatedReplies===true?'true':t.options?.collatedReplies===false?'false':''],['tekstiviesti',t.options?.sms===true?'true':t.options?.sms===false?'false':''],['sahkoposti',t.options?.email===true?'true':t.options?.email===false?'false':''],['ajastus',t.options?.scheduled===true?'true':t.options?.scheduled===false?'false':''],['lahetyspaiva',t.options?.sendDate||''],['lahetysaika',t.options?.sendTime||'']];
         return '[POHJA]\n'+fields.map(([k,v])=>k+': '+clean(v)).join('\n')+'\n\n'+String(t.body||'').replace(/\r/g,'').replace(/^\[\/POHJA\]$/gm,'[ /POHJA ]')+'\n[/POHJA]';
       }).join('\n\n')+'\n';
     }
@@ -666,7 +667,7 @@
           meta[m[1]]=m[2];
         }
         if(!meta.nimi)throw Error('Pohjan nimi puuttuu');
-        return {id:meta.id||'',title:meta.nimi,category:meta.kategoria||'Yleinen',recipientRule:meta.vastaanottajat||'ei_valintaa',messageMode:meta.viestityyppi==='single'?'single':'group',recipientGroups:(meta.ryhmat||'').split(';').map(x=>x.trim()).filter(Boolean),recipientIndividuals:(meta.henkilot||'').split(';').map(x=>x.trim()).filter(Boolean),subject:meta.aihe||'',body:block[1].slice(divider+2).replace(/\n$/,'')};
+        return {id:meta.id||'',title:meta.nimi,category:meta.kategoria||'Yleinen',recipientRule:meta.vastaanottajat||'ei_valintaa',messageMode:meta.viestityyppi==='single'?'single':'group',recipientGroups:(meta.ryhmat||'').split(';').map(x=>x.trim()).filter(Boolean),recipientIndividuals:(meta.henkilot||'').split(';').map(x=>x.trim()).filter(Boolean),options:{showRecipients:parseOpt(meta.nayta_vastaanottajien_nimet),collatedReplies:parseOpt(meta.nayta_vastaukset),sms:parseOpt(meta.tekstiviesti),email:parseOpt(meta.sahkoposti),scheduled:parseOpt(meta.ajastus),sendDate:meta.lahetyspaiva||'',sendTime:meta.lahetysaika||''},subject:meta.aihe||'',body:block[1].slice(divider+2).replace(/\n$/,'')};
       });
     }
     function exportFile(items){
@@ -829,9 +830,15 @@
        const modeLabel=label('label','Viestityyppi');modeLabel.style.cssText='display:block;margin:10px 0';const mode=document.createElement('select');
        for(const [value,name] of [['single','Yksittäinen henkilökohtainen viesti'],['group','Yhteinen ryhmäviesti']]){const option=label('option',name);option.value=value;mode.append(option)}
        mode.value=item.messageMode||'group';modeLabel.append(mode);aside.append(modeLabel);const recipientFields={};for(const [key,name] of [['recipientGroups','Ryhmät / luokat (yksi per rivi)'],['recipientIndividuals','Yksittäiset henkilöt (yksi per rivi)']]){const field=label('label',name);field.style.cssText='display:block;margin:9px 0';const input=document.createElement('textarea');input.rows=3;input.value=(item[key]||[]).join('\n');input.style.cssText='display:block;width:100%;box-sizing:border-box;border:1px solid #bacbd7;padding:7px';field.append(input);aside.append(field);recipientFields[key]=input;}
+       const optBox=label('fieldset','');optBox.style.cssText='border:1px solid #c8d7e3;padding:10px;margin:10px 0';optBox.append(label('legend','Wilman lisäasetukset ja ajastus'));const optionControls={};
+       for(const [key,name] of [['showRecipients','Näytä vastaanottajien nimet'],['collatedReplies','Näytä vastaanottajien vastaukset'],['sms','Lähetä myös tekstiviestinä'],['email','Lähetä myös sähköpostina'],['scheduled','Ajasta lähetys']]){
+        const line=label('label',' '+name);line.style.cssText='display:block;margin:7px 0';const input=document.createElement('select');for(const [value,title] of [['','Säilytä Wilman oletus'],['true','Kyllä'],['false','Ei']]){const op=label('option',title);op.value=value;input.append(op)}const saved=item.options?.[key];input.value=saved===true?'true':saved===false?'false':'';line.prepend(input);optBox.append(line);optionControls[key]=input;
+       }
+       for(const [key,name,example] of [['sendDate','Lähetyspäivä','pp.kk.vvvv'],['sendTime','Lähetysaika','tt:mm']]){const line=label('label',name);line.style.cssText='display:block;margin:7px 0';const input=document.createElement('input');input.type='text';input.placeholder=example;input.value=item.options?.[key]||'';input.style.cssText='display:block;width:100%;padding:6px;box-sizing:border-box';line.append(input);optBox.append(line);optionControls[key]=input}
+       aside.append(optBox);
        const chk=document.createElement('input');chk.type='checkbox';chk.checked=!!item.recipients;
        const rec=label('label',' Tallenna myös nykyiset vastaanottajat');rec.prepend(chk);aside.append(rec);
-       aside.append(b('Tallenna',()=>{const all=getTemplates();const next={id:item.id||'',title:fields.title.value.trim(),category:fields.category.value.trim()||'Yleinen',subject:fields.subject.value,body:fields.body.value,recipientRule:choice.value,messageMode:mode.value,recipientGroups:recipientFields.recipientGroups.value.split('\n').map(x=>x.trim()).filter(Boolean),recipientIndividuals:recipientFields.recipientIndividuals.value.split('\n').map(x=>x.trim()).filter(Boolean),recipients:chk.checked?(edit>=0&&item.recipients?item.recipients:getRecipientsSnapshot()):null};if(!next.title)return;if(edit<0)all.push(next);else all[edit]=next;localStorage.setItem(TEMPLATE_KEY,JSON.stringify(all));draw()}),b('Takaisin',draw));
+       aside.append(b('Tallenna',()=>{const all=getTemplates();const next={id:item.id||'',title:fields.title.value.trim(),category:fields.category.value.trim()||'Yleinen',subject:fields.subject.value,body:fields.body.value,options:{showRecipients:parseOpt(optionControls.showRecipients.value),collatedReplies:parseOpt(optionControls.collatedReplies.value),sms:parseOpt(optionControls.sms.value),email:parseOpt(optionControls.email.value),scheduled:parseOpt(optionControls.scheduled.value),sendDate:optionControls.sendDate.value.trim(),sendTime:optionControls.sendTime.value.trim()},recipientRule:choice.value,messageMode:mode.value,recipientGroups:recipientFields.recipientGroups.value.split('\n').map(x=>x.trim()).filter(Boolean),recipientIndividuals:recipientFields.recipientIndividuals.value.split('\n').map(x=>x.trim()).filter(Boolean),recipients:chk.checked?(edit>=0&&item.recipients?item.recipients:getRecipientsSnapshot()):null};if(!next.title)return;if(edit<0)all.push(next);else all[edit]=next;localStorage.setItem(TEMPLATE_KEY,JSON.stringify(all));draw()}),b('Takaisin',draw));
       }
       draw();
       window.addEventListener('wilmatools:drafts-changed',()=>{if(!aside.hidden&&tab==='drafts')draw()});
