@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Message Autosaver (Chrome Desktop)
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.15.2
+// @version      0.15.3
 // @description  Chrome desktop local Wilma compose autosave: subject, body and recipients.
 // @match        https://*.inschool.fi/messages/compose*
 // @run-at       document-start
@@ -802,18 +802,17 @@
       const aside=document.createElement('section');aside.id='wt-message-library';aside.setAttribute('aria-label','Viestikirjasto');
       aside.style.cssText='position:relative;flex:1 1 340px;min-width:280px;max-width:640px;background:#f7f9fc;color:#22394d;border:1px solid #cdd8e2;border-radius:6px;padding:16px;max-height:78vh;overflow:auto;font:14px/1.45 system-ui;box-sizing:border-box';
       const form=$(SEL.subject)?.closest('form');
+      // NEVER reparent Wilma's form: CKEditor iframe loses its document/selection
+      // when the form is detached and reinserted after editor initialization.
       if(form&&form.parentElement){
-        let holder=document.getElementById('wt-compose-columns');
-        if(!holder){
-          holder=document.createElement('div');holder.id='wt-compose-columns';
-          holder.style.cssText='display:grid;grid-template-columns:minmax(0,1.3fr) minmax(310px,1fr);gap:12px;align-items:start;width:100%;';
-          form.parentElement.insertBefore(holder,form);holder.append(form);
-          form.style.cssText+=';min-width:0;width:100%;';
-          const stylesheet=document.createElement('style');
-          stylesheet.textContent='@media(max-width:850px){#wt-compose-columns{grid-template-columns:minmax(0,1fr)!important}}#wt-compose-columns #wt-message-library{min-width:0!important;max-width:none!important;width:100%!important}';
-          document.head.append(stylesheet);
-        }
-        holder.append(aside);
+        const parent=form.parentElement;
+        aside.style.cssText+=';min-width:0;width:100%;max-width:none;';
+        parent.insertBefore(aside,form.nextSibling);
+        const scope='wt-compose-grid-'+Math.random().toString(36).slice(2);
+        parent.classList.add(scope);
+        const style=document.createElement('style');
+        style.textContent='.'+scope+'{display:grid!important;grid-template-columns:minmax(0,1.3fr) minmax(310px,1fr);column-gap:12px;align-items:start}.'+scope+' > :not(form):not(#wt-message-library){grid-column:1/-1}.'+scope+' > form{grid-column:1;min-width:0;width:100%}.'+scope+' > #wt-message-library{grid-column:2;grid-row:auto;min-width:0} @media(max-width:850px){.'+scope+'{grid-template-columns:minmax(0,1fr)!important}.'+scope+' > form,.'+scope+' > #wt-message-library{grid-column:1!important}}';
+        document.head.append(style);
         const tabs=document.getElementById('wt-message-toolbar');
         if(tabs){aside.prepend(tabs);tabs.style.cssText='display:flex;flex-wrap:wrap;gap:4px;align-items:center;border-bottom:1px solid #d7e1e8;margin:-6px -6px 10px;padding:3px 5px;background:transparent;font:12px system-ui';}
       }else document.querySelector('main#main-content')?.prepend(aside);
