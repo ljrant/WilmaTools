@@ -154,3 +154,7 @@ Luonnokset-välilehdessä on yksi valintaluettelo, josta valittu automaattitalle
 ### CKEditorin oikea palautuspolku (Viestikirjasto v0.14.1)
 
 Luonnosten ja viestipohjien sisältö palautetaan **vain CKEditorin `setData`-rajapinnan kautta**. Aiempi iframe-elementin `innerHTML`-varapolku saattoi näyttää tekstin oikein mutta jättää editorin oman tilan päivittämättä, jolloin tekstiä ei voinut muokata tai lähettää oikein. Jos editori ei ole vielä valmis, palautus odottaa valmistumista enintään 15 sekuntia ja ilmoittaa virheestä sen sijaan, että muuttaisi pelkkää näkyvää HTML:ää. Viestin vastaanottajien palautus pysyy erillisenä toimintona.
+
+### Rinnakkainen Viestikirjasto ja editorin täyttö (v0.15.1)
+
+Wilman kirjoituslomake ja Viestikirjasto sijoitetaan vierekkäisiin sarakkeisiin, kun tilaa on riittävästi; kapealla näytöllä kirjasto tulee alle. Yhteinen **Viesti / Viestipohjat / Luonnokset** -välilehtirivi sijoittuu Viestikirjaston yläosaan. Viestikirjasto alustetaan viestin kirjoitussivun yhteyteen eikä kellu Wilman sisältöjen päällä. Viestipohjien ja luonnosten tekstin palautus tapahtuu vain editorin omalla CKEditor 4 `setData()` -rajapinnalla: piilotettua HTML-kenttää tai iframe-elementin sisältöä ei muuteta käsin, jottei Wilman editorin muokattava tila rikkoudu. Toimivuus on vielä testattava Wilman varsinaisessa käyttöliittymässä.
