@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Desktop Sidebar
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.21.0
+// @version      0.22.0
 // @description  Finnish-first WilmaTools sidebar on every Wilma page
 // @match        https://*.inschool.fi/*
 // @grant        none
@@ -276,6 +276,7 @@ function installUnifiedMessageBar(){
  if(!/^\/messages\/(?:compose(?:\/)?|\d+\/?)$/.test(location.pathname))return;
  const main=document.querySelector('main#main-content');
  if(!main||document.getElementById('wt-message-toolbar'))return;
+ if(/^\/messages\/compose\/?$/.test(location.pathname))return; // Viestikirjasto owns the unified compose navigation.
  const compose=/^\/messages\/compose\/?$/.test(location.pathname);
  const bar=document.createElement('section');bar.id='wt-message-toolbar';
  bar.setAttribute('aria-label','WilmaTools viestityökalut');
