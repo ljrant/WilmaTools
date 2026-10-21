@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Message Autosaver (Chrome Desktop)
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.10.0
+// @version      0.10.1
 // @description  Chrome desktop local Wilma compose autosave: subject, body and recipients.
 // @match        https://*.inschool.fi/messages/compose*
 // @run-at       document-start
@@ -785,7 +785,13 @@
       aside.style.cssText='position:relative;width:100%;max-width:960px;background:#f7f9fc;color:#22394d;border:1px solid #cdd8e2;border-radius:6px;padding:16px;margin:12px auto;max-height:75vh;overflow-y:auto;font:14px/1.45 system-ui;box-sizing:border-box';
       const form=$(SEL.subject)?.closest('form');const anchor=form||$(SEL.subject)?.closest('.panel,.well,.card')||$(SEL.subject)?.parentElement?.parentElement;
       if(anchor?.parentElement)anchor.parentElement.insertBefore(aside,anchor);else document.body.append(aside);
-      let tab=location.hash==='#wt-library-templates'?'templates':'drafts',category='Kaikki',edit=-1,recipientStatus='',exportSelected=new Set();
+      let tab=location.hash==='#wt-library-templates'?'templates':'drafts',category='Kaikki',edit=-1,recipientStatus='',exportSelected=new Set(),pendingTemplate=null;
+      const sent=safeRead('wilmatools.sentTemplateImport.v1',null);
+      if(sent&&Number.isFinite(sent.createdAt)&&Date.now()-sent.createdAt<15*60*1000){
+        pendingTemplate={title:String(sent.subject||'Vanhasta viestistä').slice(0,120),subject:String(sent.subject||''),body:String(sent.body||''),category:'Yleinen',recipientRule:'ei_valintaa',messageMode:'group',recipients:null};
+        localStorage.removeItem('wilmatools.sentTemplateImport.v1');
+        tab='templates';
+      }
       const b=(name,fn)=>{const x=document.createElement('button');x.type='button';x.textContent=name;x.onclick=fn;x.style.cssText='border:1px solid #b9cbd9;background:#eff6fb;border-radius:6px;padding:7px;margin:4px;color:#234968;cursor:pointer;font:inherit';return x};
       const label=(tag,text)=>{const e=document.createElement(tag);e.textContent=text;return e};
       function draw(){
@@ -829,7 +835,7 @@
       }
       function editor(){
        aside.replaceChildren();aside.append(label('h2','Viestipohja'));
-       const item=getTemplates()[edit]||{title:'',category:'Yleinen',subject:'',body:'',recipientRule:'valitut_opiskelijat',recipients:null};
+       const item=getTemplates()[edit]||pendingTemplate||{title:'',category:'Yleinen',subject:'',body:'',recipientRule:'valitut_opiskelijat',recipients:null};
        const fields={};for(const [key,name,multi]of [['title','Nimi',false],['category','Kategoria',false],['subject','Aihe',false],['body','Viesti',true]]){
         const l=label('label',name);l.style.cssText='display:block;margin:10px 0';const inp=document.createElement(multi?'textarea':'input');if(multi)inp.rows=7;inp.value=item[key]||'';inp.style.cssText='display:block;width:100%;padding:8px;box-sizing:border-box;border:1px solid #bacbd7';l.append(inp);aside.append(l);fields[key]=inp;
        }
@@ -850,9 +856,9 @@
        aside.append(optBox);
        const chk=document.createElement('input');chk.type='checkbox';chk.checked=!!item.recipients;
        const rec=label('label',' Tallenna myös nykyiset vastaanottajat');rec.prepend(chk);aside.append(rec);
-       aside.append(b('Tallenna',()=>{const all=getTemplates();const next={id:item.id||'',title:fields.title.value.trim(),category:fields.category.value.trim()||'Yleinen',subject:fields.subject.value,body:fields.body.value,options:{showRecipients:parseOpt(optionControls.showRecipients.value),collatedReplies:parseOpt(optionControls.collatedReplies.value),sms:parseOpt(optionControls.sms.value),email:parseOpt(optionControls.email.value),scheduled:parseOpt(optionControls.scheduled.value),sendDate:optionControls.sendDate.value.trim(),sendTime:optionControls.sendTime.value.trim()},recipientRule:choice.value,messageMode:mode.value,recipientGroups:recipientFields.recipientGroups.value.split('\n').map(x=>x.trim()).filter(Boolean),recipientIndividuals:recipientFields.recipientIndividuals.value.split('\n').map(x=>x.trim()).filter(Boolean),recipients:chk.checked?(edit>=0&&item.recipients?item.recipients:getRecipientsSnapshot()):null};if(!next.title)return;if(edit<0)all.push(next);else all[edit]=next;localStorage.setItem(TEMPLATE_KEY,JSON.stringify(all));draw()}),b('Takaisin',draw));
+       aside.append(b('Tallenna',()=>{const all=getTemplates();const next={id:item.id||'',title:fields.title.value.trim(),category:fields.category.value.trim()||'Yleinen',subject:fields.subject.value,body:fields.body.value,options:{showRecipients:parseOpt(optionControls.showRecipients.value),collatedReplies:parseOpt(optionControls.collatedReplies.value),sms:parseOpt(optionControls.sms.value),email:parseOpt(optionControls.email.value),scheduled:parseOpt(optionControls.scheduled.value),sendDate:optionControls.sendDate.value.trim(),sendTime:optionControls.sendTime.value.trim()},recipientRule:choice.value,messageMode:mode.value,recipientGroups:recipientFields.recipientGroups.value.split('\n').map(x=>x.trim()).filter(Boolean),recipientIndividuals:recipientFields.recipientIndividuals.value.split('\n').map(x=>x.trim()).filter(Boolean),recipients:chk.checked?(edit>=0&&item.recipients?item.recipients:getRecipientsSnapshot()):null};if(!next.title)return;if(edit<0)all.push(next);else all[edit]=next;pendingTemplate=null;localStorage.setItem(TEMPLATE_KEY,JSON.stringify(all));draw()}),b('Takaisin',draw));
       }
-      draw();
+      if(pendingTemplate)editor();else draw();
       window.addEventListener('wilmatools:drafts-changed',()=>{if(!aside.hidden&&tab==='drafts')draw()});
       window.addEventListener('wilmatools:recipients-verified',e=>{recipientStatus=e.detail.verified?'Tallennetut vastaanottajakentät vastasivat valintaa. Tarkista silti vastaanottajat.':'Vastaanottajien palautusta ei voitu vahvistaa. Valitse vastaanottajat Wilmassa.';draw()});
     }
