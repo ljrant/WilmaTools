@@ -743,16 +743,27 @@
       if(persons.length){const res=await selectRecipientsByNames(persons);missing.push(...res.missing)}
       return {ok:missing.length===0,missing};
     }
+    function applyMessageOptions(options){
+      if(!options)return;
+      const flags=[['showRecipients','wff-ShowRecipients'],['collatedReplies','wff-CollatedReplies'],['sms','wff-AlwaysSMS'],['email','wff-AlwaysEMail'],['scheduled','wff-TimedSend']];
+      for(const [key,id] of flags){const input=document.getElementById(id);const desired=options[key];if(!input||input.disabled||typeof desired!=='boolean')continue;if(input.checked!==desired)input.click()}
+      if(options.scheduled!==true)return;
+      for(const [key,id] of [['sendDate','wff-SendDate'],['sendTime','wff-SendTime']]){
+        const input=document.getElementById(id);if(!input||input.disabled||!options[key])continue;
+        input.value=options[key];dispatchBasicEvents(input);
+      }
+    }
     function useTemplate(item){
       const vals={paivamaara:new Date().toLocaleDateString('fi-FI')};
       if(item.messageMode==='group'&&/\{(?:etunimi|opiskelijan_nimi|huoltajan_nimi)\}/i.test((item.subject||'')+' '+(item.body||''))){alert('Ryhmäviesti sisältää yksittäisen vastaanottajan muuttujia. Valitse henkilökohtainen viesti tai muokkaa pohjaa.');return}
       try{
         const subject=expandTemplate(item.subject||'',vals),body=expandTemplate(item.body||'',vals);
         applySaved({subject,body},false);
+        applyMessageOptions(item.options);
         if(item.recipientRule==='yhdistelma'){
           selectTemplateGroups(item).then(result=>{
             const missing=result.missing;
-            window.dispatchEvent(new CustomEvent('wilmatools:recipients-verified',{detail:{verified:missing.length===0&&targets.length>0}}));
+            window.dispatchEvent(new CustomEvent('wilmatools:recipients-verified',{detail:{verified:missing.length===0&&((item.recipientGroups||[]).length+(item.recipientIndividuals||[]).length)>0}}));
             if(missing.length)alert('Valitse Wilmassa vielä: '+missing.join(', '));
           }).catch(()=>alert('Tarkista ryhmä- ja henkilövastaanottajat Wilmassa.'));
         }else if(item.recipients)restoreRecipients(item.recipients).then(ok=>{
