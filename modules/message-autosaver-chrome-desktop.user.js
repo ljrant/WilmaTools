@@ -796,7 +796,7 @@
       if(!withRecipients)return;
       if(Array.isArray(item.recipientQuery)&&item.recipientQuery.length){
         const params=new URLSearchParams();
-        for(const pair of item.recipientQuery){const [k,v]=pair.split('=');if(['r_class','r_classguardian'].includes(k)&&/^\\d+$/.test(v||''))params.set(k,v)}
+        for(const pair of item.recipientQuery){const [k,v]=pair.split('=');if(['r_class','r_classguardian'].includes(k)&&/^\d+$/.test(v||''))params.set(k,v)}
         if([...params].length){
           // Carry the content over the navigation so Wilma can add recipients natively.
           localStorage.setItem('wilmatools.draftRestore.v1',JSON.stringify({subject:item.subject||'',bodyHtml:item.bodyHtml||item.body||'',createdAt:Date.now()}));
