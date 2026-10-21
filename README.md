@@ -150,3 +150,7 @@ Luonnokset-välilehdessä on yksi valintaluettelo, josta valittu automaattitalle
 ### Viestipohjien haku ja käyttö (viestikirjasto v0.14.0)
 
 **Viestipohjat**-välilehdessä on hakukenttä, kategoriasuodatin ja kategorioittain ryhmitelty pudotusvalikko (`optgroup`). Viestipohjan valitseminen käyttää sitä suoraan Wilman viestin kirjoituslomakkeeseen. Muokkaus, vienti, tuonti ja poisto löytyvät suljettavasta **Viestipohjien hallinta** -osiosta, jotta selausnäkymä pysyy kompaktina. CKEditor 4:n viestisisällön syöttö käyttää `setData(html, callback)` -kutsua ja oikeaa HTML-tunnistusta. Toiminta tulee vielä varmistaa oikeassa Wilma-istunnossa.
+
+### CKEditorin oikea palautuspolku (Viestikirjasto v0.14.1)
+
+Luonnosten ja viestipohjien sisältö palautetaan **vain CKEditorin `setData`-rajapinnan kautta**. Aiempi iframe-elementin `innerHTML`-varapolku saattoi näyttää tekstin oikein mutta jättää editorin oman tilan päivittämättä, jolloin tekstiä ei voinut muokata tai lähettää oikein. Jos editori ei ole vielä valmis, palautus odottaa valmistumista enintään 15 sekuntia ja ilmoittaa virheestä sen sijaan, että muuttaisi pelkkää näkyvää HTML:ää. Viestin vastaanottajien palautus pysyy erillisenä toimintona.
