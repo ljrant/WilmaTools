@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Message Autosaver (Chrome Desktop)
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.13.1
+// @version      0.13.2
 // @description  Chrome desktop local Wilma compose autosave: subject, body and recipients.
 // @match        https://*.inschool.fi/messages/compose*
 // @run-at       document-start
@@ -176,7 +176,7 @@
                 return;
             }
 
-            // Individual recipients are not restored automatically.
+            await restoreRecipients(draft.recipients);
         });
 
         $('#wilma-as-clear').addEventListener('click', () => {
@@ -754,7 +754,8 @@
         const result=await selectClassRecipients(id[1],kind);
         if(!result.ok)missing.push(group+' ('+result.missing.join(', ')+')');
       }
-      // Individual recipients are selected manually in Wilma.
+      const persons=item.recipientIndividuals||[];
+      if(persons.length){const res=await selectRecipientsByNames(persons);missing.push(...res.missing)}
       return {ok:missing.length===0,missing};
     }
     function applyMessageOptions(options){
@@ -774,13 +775,13 @@
         const subject=expandTemplate(item.subject||'',vals),body=expandTemplate(item.body||'',vals);
         applySaved({subject,bodyHtml:item.bodyHtml?expandTemplate(sanitizeTemplateHtml(item.bodyHtml),vals):body},false);
         applyMessageOptions(item.options);
-        if(item.recipientRule==='yhdistelma'&&(item.recipientGroups||[]).length){
+        if(item.recipientRule==='yhdistelma'&&((item.recipientGroups||[]).length||(item.recipientIndividuals||[]).length)){
           selectTemplateGroups(item).then(result=>{
             const missing=result.missing;
-            window.dispatchEvent(new CustomEvent('wilmatools:recipients-verified',{detail:{verified:missing.length===0&&((item.recipientGroups||[]).length+(item.recipientIndividuals||[]).length)>0}}));
+            // No separate confirmation gate: Wilma recipient controls remain the source of truth.
             if(missing.length)console.warn('[WilmaTools] Ryhmän vastaanottajavalinta jäi kesken:',missing);
           }).catch(()=>alert('Tarkista ryhmä- ja henkilövastaanottajat Wilmassa.'));
-        }
+        }else if(item.recipients){restoreRecipients(item.recipients).catch(err=>console.warn('[WilmaTools] Pohjan vastaanottajat:',err))}
       }catch(err){if(err.message!=='Käyttö peruttu')alert(err.message)}
     }
     function applySaved(item,withRecipients){
@@ -791,7 +792,7 @@
         const params=new URLSearchParams();for(const pair of item.recipientQuery){const [k,v]=pair.split('=');if(['r_class','r_classguardian'].includes(k)&&/^\d+$/.test(v||''))params.set(k,v)}
         if([...params].length){localStorage.setItem('wilmatools.draftRestore.v1',JSON.stringify({subject:item.subject||'',bodyHtml:item.bodyHtml||'',createdAt:Date.now()}));location.assign('/messages/compose?'+params.toString());return}
       }
-      // Individual recipient restoration is deliberately disabled. Wilma remains authoritative.
+      if(withRecipients&&item.recipients){restoreRecipients(item.recipients).catch(err=>console.warn('[WilmaTools] Vastaanottajien palautus epäonnistui:',err))}
     }
     function library(){
       const existing=document.getElementById('wt-message-library');if(existing){existing.hidden=false;existing.scrollIntoView({block:'nearest'});return}
@@ -813,13 +814,16 @@
       function draw(){
        aside.replaceChildren();const header=label('h2','Viestikirjasto');header.style.margin='0 0 10px';aside.append(header,b('Sulje',()=>{aside.hidden=true;window.dispatchEvent(new Event('wilmatools:library-closed'))}));
        if(tab==='drafts'){
-        const current=loadDraft();if(current)aside.append(b('Viimeisin automaattitallenne',()=>{if(confirm('Korvataanko viestin sisältö tallenteella?'))applySaved(current,true)}));
-        for(const item of listHistory()){
-         const row=label('div','');row.style.cssText='border-bottom:1px solid #ddd;padding:9px 0';
-         row.append(label('strong',item.subject||'Nimetön viesti'),label('div',new Date(item.time).toLocaleString('fi-FI')));
-         row.append(b('Palauta',()=>{if(confirm('Korvataanko viestin sisältö tallenteella?'))applySaved(item,true)}));
-         row.append(b('Tallenna pohjaksi',()=>{if(!confirm('Luonnoksessa voi olla henkilötietoja. Tarkista ja poista ne ennen pohjan jakamista. Luodaanko muokattava pohja?'))return;const arr=getTemplates();arr.push({title:item.subject||'Uusi pohja',category:'Yleinen',subject:item.subject,body:item.bodyHtml,recipientRule:'ei_valintaa',recipients:null});localStorage.setItem(TEMPLATE_KEY,JSON.stringify(arr));tab='templates';draw()}));aside.append(row)
-        }
+        const drafts=[...listHistory()];
+        const latest=loadDraft();
+        if(latest)drafts.unshift({...latest,time:latest.savedAt||new Date().toISOString(),_latest:true});
+        const heading=label('label','Valitse luonnos');heading.style.cssText='display:block;font-weight:600;margin:12px 0 4px';
+        const select=document.createElement('select');select.style.cssText='width:100%;max-width:100%;padding:8px;border:1px solid #b9cbd9;border-radius:5px';
+        const placeholder=label('option','Valitse tallenne…');placeholder.value='';select.append(placeholder);
+        drafts.forEach((item,i)=>{const date=new Date(item.time||item.savedAt);const when=Number.isNaN(date.getTime())?'':date.toLocaleString('fi-FI');const option=label('option',(item._latest?'Viimeisin automaattitallenne':'Luonnos')+' · '+(item.subject||'Nimetön')+' · '+when);option.value=String(i);select.append(option)});
+        select.onchange=()=>{if(select.value==='')return;const draft=drafts[Number(select.value)];if(!draft)return;applySaved(draft,true);aside.hidden=true;window.dispatchEvent(new Event('wilmatools:library-closed'))};
+        aside.append(heading,select);
+        const count=label('p',drafts.length+' tallennetta. Valinta palauttaa otsikon, tekstin ja vastaanottajat.');count.style.cssText='font-size:12px;color:#607080;margin:8px 0';aside.append(count);
        }else{
         const data=getTemplates(),cats=['Kaikki',...new Set(data.flatMap(templateCats))];
         const select=document.createElement('select');for(const c of cats){const opt=label('option',c);opt.value=c;select.append(opt)}select.value=cats.includes(category)?category:'Kaikki';select.onchange=()=>{category=select.value;draw()};aside.append(select);
