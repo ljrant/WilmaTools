@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Desktop Sidebar
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.19.2
+// @version      0.20.0
 // @description  Finnish-first WilmaTools sidebar on every Wilma page
 // @match        https://*.inschool.fi/*
 // @grant        none
@@ -270,52 +270,39 @@ function swapTwoHomepageBoxes(){
 }
 
 
-function installSentTemplateAction(){
- if(!/^\/messages\//.test(location.pathname)||location.pathname.startsWith('/messages/compose'))return;
- const frame=document.querySelector('iframe#message-wrapper');
- if(!frame)return;
- let doc;try{doc=frame.contentDocument}catch{return}
- const message=doc?.querySelector('body > .ckeditor, body .ckeditor');
- if(!message||!message.textContent.trim())return;
- function saveAsTemplate(){
-  const content=frame.contentDocument?.querySelector('body > .ckeditor, body .ckeditor');
-  if(!content)return;
-  const heading=[...document.querySelectorAll('h1')].filter(h=>!h.classList.contains('sr-only')&&h.getClientRects().length).map(h=>txt(h.textContent)).find(Boolean)||'';
-  const subject=heading.replace(/^(?:Lähetetty viesti|Viesti|Sent message)\s*[:–-]\s*/i,'').slice(0,250);
-  const body=(content.innerText||content.textContent||'').trim();
-  if(!body)return;
-  localStorage.setItem('wilmatools.sentTemplateImport.v1',JSON.stringify({subject,body,createdAt:Date.now()}));
-  location.assign('/messages/compose#wt-library-templates');
- }
- // Place a small WilmaTools dropdown alongside the message's existing action icons.
- // The anchor is resolved from Wilma's message-specific actions, not a page-global navbar.
- const nativeItem=[...document.querySelectorAll('a,button')].find(el=>/^(Peru viesti|Poista oma kopiosi|Siirrä arkistoon|Recall message|Move to archive)$/i.test(txt(el.textContent))&&el.getClientRects().length);
- const nativeMenu=nativeItem?.closest('.dropdown-menu,[role="menu"]');
- const nativeGroup=nativeMenu?.closest('.btn-group,.dropdown,.dropdown-container');
- const heading=document.querySelector('iframe#message-wrapper');
- const anchor=nativeGroup||nativeMenu?.parentElement||heading;
- if(!anchor?.parentElement)return;
- const existing=document.getElementById('wt-message-actions');
- if(existing){if(existing.dataset.anchor==='native'||!nativeGroup)return;existing.remove()}
- const wrapper=document.createElement('div');wrapper.id='wt-message-actions';wrapper.dataset.anchor=nativeGroup?'native':'fallback';
- wrapper.style.cssText='display:inline-block;position:relative;vertical-align:middle;margin:0 4px;';
- const toggle=document.createElement('button');toggle.type='button';toggle.textContent='WilmaTools ▾';toggle.setAttribute('aria-expanded','false');
- toggle.style.cssText='border:1px solid #c5d0d9;border-radius:3px;background:#f7f9fb;color:#225479;padding:5px 8px;cursor:pointer;font:12px system-ui';
- const menu=document.createElement('div');menu.hidden=true;menu.style.cssText='position:absolute;top:100%;right:0;min-width:210px;background:#fff;border:1px solid #ccd6df;box-shadow:0 4px 12px #0002;z-index:10030;padding:4px 0;';
- const add=(title,action)=>{const b=document.createElement('button');b.type='button';b.textContent=title;b.style.cssText='display:block;width:100%;text-align:left;background:transparent;color:#263f52;border:0;padding:9px 13px;cursor:pointer;font:13px system-ui';b.onmouseover=()=>b.style.background='#eaf1f6';b.onmouseout=()=>b.style.background='transparent';b.onclick=()=>{menu.hidden=true;toggle.setAttribute('aria-expanded','false');action()};menu.append(b)};
- add('Tallenna viestipohjaksi',saveAsTemplate);
- add('Viestipohjat',()=>location.assign('/messages/compose#wt-library-templates'));
- add('Luonnokset',()=>location.assign('/messages/compose#wt-library'));
- add('Viestikirjasto',()=>location.assign('/messages/compose#wt-library-templates'));
- toggle.onclick=()=>{menu.hidden=!menu.hidden;toggle.setAttribute('aria-expanded',String(!menu.hidden))};
- wrapper.append(toggle,menu);
- if(nativeGroup)nativeGroup.insertAdjacentElement('afterend',wrapper);else heading.insertAdjacentElement('beforebegin',wrapper);
- document.addEventListener('click',event=>{if(!wrapper.contains(event.target)){menu.hidden=true;toggle.setAttribute('aria-expanded','false')}});
+
+function installUnifiedMessageBar(){
+ if(!/^\/messages\/(?:compose(?:\/)?|\d+\/?)$/.test(location.pathname))return;
+ const main=document.querySelector('main#main-content');
+ if(!main||document.getElementById('wt-message-toolbar'))return;
+ const compose=/^\/messages\/compose\/?$/.test(location.pathname);
+ const bar=document.createElement('section');bar.id='wt-message-toolbar';
+ bar.setAttribute('aria-label','WilmaTools viestityökalut');
+ bar.style.cssText='display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding:7px 9px;margin:0 0 12px;background:#f6f8fa;border:1px solid #d8e1e8;border-radius:5px;font:12px system-ui;color:#29465c;max-width:100%;box-sizing:border-box;';
+ const brand=document.createElement('strong');brand.textContent='WilmaTools';brand.style.cssText='font-size:12px;margin-right:6px';bar.append(brand);
+ const button=(name,action)=>{const b=document.createElement('button');b.type='button';b.textContent=name;b.style.cssText='background:#fff;color:#2a5676;border:1px solid #cfdae2;border-radius:4px;padding:5px 9px;cursor:pointer;font:12px system-ui';b.addEventListener('click',action);bar.append(b);return b};
+ const openLibrary=section=>{
+  if(compose){window.dispatchEvent(new CustomEvent('wilmatools:show-library',{detail:{section}}));return}
+  location.assign('/messages/compose#'+(section==='drafts'?'wt-library':'wt-library-templates'));
+ };
+ button('Viestipohjat',()=>openLibrary('templates'));
+ button('Luonnokset',()=>openLibrary('drafts'));
+ if(!compose)button('Tallenna viestipohjaksi',()=>{
+   const frame=document.querySelector('iframe#message-wrapper');
+   const body=frame?.contentDocument?.querySelector('body > .ckeditor, body .ckeditor');
+   if(!body||!body.textContent.trim()){alert('Viestisisältöä ei löydy. Odota viestin latautumista.');return}
+   const h=main.querySelector('h1');
+   const subject=(h?.textContent||'').trim().slice(0,250);
+   localStorage.setItem('wilmatools.sentTemplateImport.v1',JSON.stringify({subject,body:(body.innerText||body.textContent||'').trim(),createdAt:Date.now()}));
+   location.assign('/messages/compose#wt-library-templates');
+ });
+ if(compose)button('Tallenna nykyinen pohjaksi',()=>window.dispatchEvent(new CustomEvent('wilmatools:save-compose-template')));
+ main.insertAdjacentElement('afterbegin',bar);
 }
-if(/^\/messages\//.test(location.pathname)&&!location.pathname.startsWith('/messages/compose')){
- installSentTemplateAction();
- let attempts=0;const timer=setInterval(()=>{installSentTemplateAction();if(++attempts>=25)clearInterval(timer)},600);
- document.addEventListener('load',e=>{if(e.target?.id==='message-wrapper')installSentTemplateAction()},true);
+if(/^\/messages\//.test(location.pathname)){
+ panel.style.display='none';
+ installUnifiedMessageBar();
+ let checks=0;const wait=setInterval(()=>{installUnifiedMessageBar();if(++checks>25)clearInterval(wait)},450);
 }
 if(['/', '/index','/dashboard','/home'].includes(location.pathname)){
  attachHome();swapTwoHomepageBoxes();
