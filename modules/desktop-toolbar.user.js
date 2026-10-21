@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Desktop Sidebar
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.19.0
+// @version      0.19.1
 // @description  Finnish-first WilmaTools sidebar on every Wilma page
 // @match        https://*.inschool.fi/*
 // @grant        none
@@ -269,6 +269,35 @@ function swapTwoHomepageBoxes(){
  }
 }
 
+
+function installSentTemplateAction(){
+ if(!/^\/messages\//.test(location.pathname)||location.pathname.startsWith('/messages/compose'))return;
+ const frame=document.querySelector('iframe#message-wrapper');
+ if(!frame||document.getElementById('wt-save-sent-template'))return;
+ let doc;try{doc=frame.contentDocument}catch{return}
+ const message=doc?.querySelector('body > .ckeditor, body .ckeditor');
+ if(!message||!message.textContent.trim())return;
+ const button=document.createElement('button');
+ button.id='wt-save-sent-template';button.type='button';
+ button.textContent='Tallenna viestipohjaksi';
+ button.style.cssText='display:inline-block;margin:10px 0;padding:7px 12px;border:1px solid #b8cbd9;border-radius:5px;background:#edf4f9;color:#164b77;cursor:pointer;font:13px system-ui';
+ button.onclick=()=>{
+  const content=doc.querySelector('body > .ckeditor, body .ckeditor');
+  if(!content)return;
+  const heading=[...document.querySelectorAll('h1')].filter(h=>!h.classList.contains('sr-only')&&h.getClientRects().length).map(h=>txt(h.textContent)).find(Boolean)||'';
+  const subject=heading.replace(/^(?:Lähetetty viesti|Viesti|Sent message)\s*[:–-]\s*/i,'').slice(0,250);
+  const body=(content.innerText||content.textContent||'').trim();
+  if(!body)return;
+  localStorage.setItem('wilmatools.sentTemplateImport.v1',JSON.stringify({subject,body,createdAt:Date.now()}));
+  location.assign('/messages/compose#wt-library-templates');
+ };
+ frame.insertAdjacentElement('beforebegin',button);
+}
+if(/^\/messages\//.test(location.pathname)&&!location.pathname.startsWith('/messages/compose')){
+ installSentTemplateAction();
+ let attempts=0;const timer=setInterval(()=>{installSentTemplateAction();if(++attempts>=25)clearInterval(timer)},600);
+ document.addEventListener('load',e=>{if(e.target?.id==='message-wrapper')installSentTemplateAction()},true);
+}
 if(['/', '/index','/dashboard','/home'].includes(location.pathname)){
  attachHome();swapTwoHomepageBoxes();
  // Wilma can render the homepage blocks after DOMContentLoaded.
