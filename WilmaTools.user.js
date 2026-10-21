@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.19.1
+// @version      0.19.2
 // @description  Local Wilma homeroom gradebook overview, FI/EN
 // @match        https://*.inschool.fi/profiles/classes/*
 // @grant        none
@@ -209,7 +209,7 @@ const go=el('button',cfg.lang==='fi'?'Valmistele Wilma-viesti':'Prepare Wilma me
  const people=unique.filter(p=>state.messageStudentIds.has(p.id));if(!people.length){alert(mt('empty'));return}
  const chosen=options[+templateSelect.value]||options[0];
  const body=people.length===1?chosen.body.replaceAll('{etunimi}',people[0].name.split(/\s+/)[0]).replaceAll('{name}',people[0].name.split(/\s+/)[0]):chosen.body.replaceAll('{etunimi}',cfg.lang==='fi'?'opiskelija':'student').replaceAll('{name}',cfg.lang==='fi'?'opiskelija':'student');
- const request={subject:chosen.subject,body,recipientsNames:people.map(p=>p.name),createdAt:Date.now()};
+ const request={subject:chosen.subject,body,recipientsNames:people.map(p=>p.name),recipientIds:people.map(p=>p.id),recipientRule:chosen.recipientRule||'valitut_opiskelijat',createdAt:Date.now()};
  localStorage.setItem('wilmatools.composeRequest.v1',JSON.stringify(request));
  window.open(location.origin+'/messages/compose#wt-library','_blank','noopener');
 };templateRow.append(go);
