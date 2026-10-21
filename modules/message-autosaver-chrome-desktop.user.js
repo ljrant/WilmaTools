@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Message Autosaver (Chrome Desktop)
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.9.5
+// @version      0.10.0
 // @description  Chrome desktop local Wilma compose autosave: subject, body and recipients.
 // @match        https://*.inschool.fi/messages/compose*
 // @run-at       document-start
@@ -780,10 +780,11 @@
       });
     }
     function library(){
-      const existing=document.getElementById('wt-message-library');if(existing){existing.hidden=false;return}
-      const aside=document.createElement('aside');aside.id='wt-message-library';
-      aside.style.cssText='position:fixed;right:0;top:0;height:100vh;width:min(370px,93vw);background:white;color:#22394d;z-index:2147483400;box-shadow:-4px 0 18px #0002;padding:17px;overflow-y:auto;font:14px/1.45 system-ui;box-sizing:border-box';
-      document.body.append(aside);
+      const existing=document.getElementById('wt-message-library');if(existing){existing.hidden=false;existing.scrollIntoView({block:'nearest'});return}
+      const aside=document.createElement('section');aside.id='wt-message-library';aside.setAttribute('aria-label','Viestikirjasto');
+      aside.style.cssText='position:relative;width:100%;max-width:960px;background:#f7f9fc;color:#22394d;border:1px solid #cdd8e2;border-radius:6px;padding:16px;margin:12px auto;max-height:75vh;overflow-y:auto;font:14px/1.45 system-ui;box-sizing:border-box';
+      const form=$(SEL.subject)?.closest('form');const anchor=form||$(SEL.subject)?.closest('.panel,.well,.card')||$(SEL.subject)?.parentElement?.parentElement;
+      if(anchor?.parentElement)anchor.parentElement.insertBefore(aside,anchor);else document.body.append(aside);
       let tab=location.hash==='#wt-library-templates'?'templates':'drafts',category='Kaikki',edit=-1,recipientStatus='',exportSelected=new Set();
       const b=(name,fn)=>{const x=document.createElement('button');x.type='button';x.textContent=name;x.onclick=fn;x.style.cssText='border:1px solid #b9cbd9;background:#eff6fb;border-radius:6px;padding:7px;margin:4px;color:#234968;cursor:pointer;font:inherit';return x};
       const label=(tag,text)=>{const e=document.createElement(tag);e.textContent=text;return e};
@@ -857,7 +858,7 @@
     }
     function addLibraryEntry(){
       if(document.getElementById('wt-library-entry'))return;
-      const button=document.createElement('button');button.id='wt-library-entry';button.type='button';button.textContent='Viestikirjasto';button.style.cssText='position:fixed;right:12px;bottom:12px;padding:10px 15px;background:#164c77;color:#fff;border:0;border-radius:8px;z-index:2147483300;cursor:pointer';button.onclick=library;document.body.append(button);
+      const button=document.createElement('button');button.id='wt-library-entry';button.type='button';button.textContent='Viestikirjasto';button.style.cssText='display:inline-block;margin:8px 0;padding:7px 12px;background:#e9f1f6;color:#164c77;border:1px solid #b8ccda;border-radius:5px;cursor:pointer';button.onclick=library;const subject=$(SEL.subject);const form=subject?.closest('form');const target=form?.querySelector('#wff-Subject')?.parentElement||subject?.parentElement;if(target)target.insertAdjacentElement('afterend',button);else document.body.append(button);
       if(location.hash==='#wt-library'||location.hash==='#wt-library-templates')library();
       const request=safeRead(REQUEST_KEY,null);
       if(request&&Date.now()-request.createdAt<120000){
