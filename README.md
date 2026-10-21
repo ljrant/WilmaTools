@@ -162,3 +162,7 @@ Wilman kirjoituslomake ja Viestikirjasto sijoitetaan vierekkäisiin sarakkeisiin
 ### CKEditorin iframe-korjaus (Viestikirjasto v0.15.3)
 
 Rinnakkaisen asettelun aiemmassa toteutuksessa Wilman viestilomake siirrettiin toiseen DOM-säiliöön. Tämä saattoi irrottaa CKEditorin iframe-dokumentin ja aiheuttaa `getSelection`-virheen sekä estää palautettujen viestien muokkaamisen tai tallentamisen. Uusi asettelu käyttää alkuperäisen lomakkeen vanhempielementin CSS-ruudukkoa eikä siirrä viestilomaketta tai editoria DOM-puussa. Päivityksen jälkeen sivu on ladattava uudelleen, jotta jo rikkoutunut editori alustuu uudelleen.
+
+### Yksi viestityökalujen valikko (Toolbar v0.22.0, Viestikirjasto v0.16.1)
+
+Wilman viestin kirjoitussivulla yläreunan erillinen WilmaTools-välilehtirivi on poistettu. Oikeanpuoleisessa Viestikirjastossa on yksi yhtenäinen **Viesti / Viestipohjat / Luonnokset** -välilehtivalikko. Viestipohjien haku, luokittelu, luonnosvalinta ja hallinta toimivat saman näkymän sisällä. Näin päällekkäiset yläpalkit ja kirjaston erilliset valikkopainikkeet poistuvat. Wilman alkuperäistä viestilomaketta ei siirretä DOM-puussa, jotta CKEditor säilyy ehjänä. Avatun vanhan viestin omat työkalut säilyvät yksittäisen viestin sivulla.
