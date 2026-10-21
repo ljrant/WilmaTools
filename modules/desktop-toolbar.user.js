@@ -122,24 +122,33 @@ async function copyStudents(url){
  }catch(e){info(e.message)}
 }
 function groupMessageLinks(doc){
- const links={students:null,guardians:null,both:null,group:null};
+ const candidates={students:new Set(),guardians:new Set(),both:new Set(),group:new Set()};
  for(const a of doc.querySelectorAll('a[href]')){
-  const path=safePath(a);if(!path||!path.startsWith('/messages/compose'))continue;
+  const path=safePath(a);
+  if(!path||!path.startsWith('/messages/compose'))continue;
   const name=txt(a.textContent).toLocaleLowerCase('fi');
-  // A singular student/guardian link must never stand for an entire class.
-  if(/opiskelijalle|oppilaalle|huoltajalle|student\b|guardian\b|parent\b/.test(name)&&!/opiskelijoille|oppilaille|huoltajille|students|guardians|parents/.test(name))continue;
-  const student=/opiskelijoille|oppilaille|students\b/i.test(name);
-  const guardian=/huoltajille|guardians\b|parents\b/i.test(name);
-  if(student&&guardian)links.both=path;
-  else if(student)links.students=path;
-  else if(guardian)links.guardians=path;
-  else if(/viesti ryhmälle|message group/i.test(name))links.group=path;
+  const single=/opiskelijalle|oppilaalle|huoltajalle|yksittäiselle|single student|single guardian|single parent/i.test(name);
+  if(single)continue;
+  // Student-specific rows frequently contain actions named "Viesti opiskelijoille".
+  // Those actions must not be mistaken for class-wide Wilma links.
+  const row=a.closest('tr,li,.student,.student-row');
+  if(row&&row.querySelector('a[href*="/profiles/students/"]'))continue;
+  const student=/opiskelijoille|opiskelijat|oppilaille|students\b/i.test(name);
+  const guardian=/huoltajille|huoltajat|guardians\b|parents\b/i.test(name);
+  if(student&&guardian)candidates.both.add(path);
+  else if(student)candidates.students.add(path);
+  else if(guardian)candidates.guardians.add(path);
+  else if(/viesti ryhmälle|message group/i.test(name))candidates.group.add(path);
  }
- // If Wilma exposes the same URL for different actions, do not guess.
- const types=['students','guardians','both'];
- for(const type of types){
-  if(!links[type])continue;
-  if(types.some(other=>other!==type&&links[other]===links[type]))links[type]=null;
+ const links={students:null,guardians:null,both:null,group:null};
+ for(const type of Object.keys(links)){
+  const options=[...candidates[type]];
+  // Several different recipient URLs for the same action = ambiguous.
+  if(options.length===1)links[type]=options[0];
+ }
+ const groups=['students','guardians','both'];
+ for(const type of groups){
+  if(links[type]&&groups.some(other=>other!==type&&links[other]===links[type]))links[type]=null;
  }
  return links;
 }
