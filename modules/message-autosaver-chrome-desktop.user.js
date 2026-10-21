@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Message Autosaver (Chrome Desktop)
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.9.2
+// @version      0.9.3
 // @description  Chrome desktop local Wilma compose autosave: subject, body and recipients.
 // @match        https://*.inschool.fi/messages/compose*
 // @run-at       document-start
@@ -682,6 +682,26 @@
         values[key]=answer;return answer;
       });
     }
+    async function selectClassRecipients(classId,type){
+      if(!/^\d+$/.test(String(classId)))return {ok:false,missing:['luokan tunniste']};
+      await openRecipientsPanel();
+      const findPanel=()=>[...document.querySelectorAll('[id^="collapse-school-classes-"]')].find(el=>new RegExp('^collapse-school-classes-'+classId+'-').test(el.id));
+      const panel=findPanel();
+      if(!panel)return {ok:false,missing:['luokan vastaanottajapaneeli']};
+      const disclosure=document.querySelector('a.disclosure[href="#'+panel.id+'"]');
+      if(disclosure&&(disclosure.classList.contains('collapsed')||!panel.classList.contains('in')))disclosure.click();
+      await sleep(300);
+      const kinds=type==='both'?['Opiskelijat','Huoltajat']:type==='guardians'?['Huoltajat']:['Opiskelijat'];
+      const missing=[];
+      for(const kind of kinds){
+        const buttons=[...panel.querySelectorAll('button.recipient-block')].filter(b=>b.textContent.trim()===kind&&!b.disabled&&!b.classList.contains('disabled'));
+        if(buttons.length!==1){missing.push(kind);continue}
+        const button=buttons[0];
+        if(button.getAttribute('aria-pressed')!=='true'&&!button.classList.contains('active')){button.click();await sleep(250)}
+        if(button.getAttribute('aria-pressed')!=='true'&&!button.classList.contains('active'))missing.push(kind);
+      }
+      return {ok:missing.length===0,missing};
+    }
     async function selectRecipientsByNames(names){
       const targets=[...new Set((names||[]).map(x=>String(x).trim()).filter(Boolean))];
       if(!targets.length)return {selected:[],missing:[]};
@@ -808,21 +828,26 @@
       const button=document.createElement('button');button.id='wt-library-entry';button.type='button';button.textContent='Viestikirjasto';button.style.cssText='position:fixed;right:12px;bottom:12px;padding:10px 15px;background:#164c77;color:#fff;border:0;border-radius:8px;z-index:2147483300;cursor:pointer';button.onclick=library;document.body.append(button);
       if(location.hash==='#wt-library'||location.hash==='#wt-library-templates')library();
       const request=safeRead(REQUEST_KEY,null);
-      if(request&&Date.now()-request.createdAt<120000&&Array.isArray(request.recipientsNames)){
+      if(request&&Date.now()-request.createdAt<120000){
         localStorage.removeItem(REQUEST_KEY);
-        const current=collectDraft();
-        if(!isMeaningfulDraft(current)){
-          const safe=document.createElement('div');safe.textContent=String(request.body||'');
-          applySaved({subject:String(request.subject||''),bodyHtml:safe.innerHTML.replaceAll('\n','<br>')},false);
+        if(request.subject||request.body){
+          const current=collectDraft();
+          if(!isMeaningfulDraft(current)){
+            const safe=document.createElement('div');safe.textContent=String(request.body||'');
+            applySaved({subject:String(request.subject||''),bodyHtml:safe.innerHTML.replaceAll('\\n','<br>')},false);
+          }
         }
-        library();
-        selectRecipientsByNames(request.recipientsNames).then(result=>{
-          const message=result.missing.length
-           ?'Vastaanottajia ei voitu vahvistaa: '+result.missing.join(', ')+'. Tarkista kaikki vastaanottajat Wilmassa.'
-           :'Vastaanottajavalinnat tehty. Tarkista vastaanottajat Wilmassa ennen lähettämistä.';
-          const box=document.getElementById('wt-message-library');
-          if(box){const notice=document.createElement('p');notice.textContent=message;notice.style.cssText='padding:10px;border:1px solid #d6bd80;background:#fff5db';box.prepend(notice)}
-        }).catch(err=>console.warn('[WilmaTools] Recipients must be chosen manually:',err));
+        const task=request.recipientClassId
+          ?selectClassRecipients(request.recipientClassId,request.recipientType)
+          :Array.isArray(request.recipientsNames)&&request.recipientsNames.length
+            ?selectRecipientsByNames(request.recipientsNames).then(r=>({ok:r.missing.length===0,missing:r.missing}))
+            :Promise.resolve({ok:true,missing:[]});
+        task.then(result=>{
+          if(!result.ok){
+            library();const pane=document.getElementById('wt-message-library');
+            if(pane){const note=document.createElement('p');note.textContent='Valintaa ei voitu vahvistaa: '+result.missing.join(', ')+'. Tarkista vastaanottajat Wilmassa.';pane.prepend(note)}
+          }
+        }).catch(err=>console.warn('[WilmaTools] Recipient selection failed:',err));
       }
       window.addEventListener('wilmatools:open-library',()=>{const lib=document.getElementById('wt-message-library');if(lib)lib.hidden=false;else library()});
     }
