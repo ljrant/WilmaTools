@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Message Autosaver (Chrome Desktop)
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.12.4
+// @version      0.12.5
 // @description  Chrome desktop local Wilma compose autosave: subject, body and recipients.
 // @match        https://*.inschool.fi/messages/compose*
 // @run-at       document-start
@@ -278,37 +278,28 @@
     }
 
     function setBodyHtml(html) {
-        const editor = getCkeditorInstance();
-
-        if (editor && typeof editor.setData === 'function') {
-            editor.setData(html || '', {
-                callback: function () {
-                    if (typeof editor.updateElement === 'function') {
-                        editor.updateElement();
-                    }
-
-                    const textarea = $(SEL.bodyTextarea);
-                    if (textarea) {
-                        textarea.value = html || '';
-                        dispatchBasicEvents(textarea);
-                    }
-                }
-            });
+        const value=String(html||'');
+        const textarea=$(SEL.bodyTextarea);
+        const editor=getCkeditorInstance();
+        const syncTextarea=()=>{
+            if(textarea){textarea.value=value;textarea.dispatchEvent(new Event('input',{bubbles:true}));textarea.dispatchEvent(new Event('change',{bubbles:true}))}
+        };
+        if(editor&&typeof editor.setData==='function'){
+            const put=()=>{
+                try{
+                    if(editor.status!=='ready')return false;
+                    editor.setData(value,{callback:()=>{try{editor.updateElement?.()}catch(e){console.warn('[WilmaTools] Editor sync:',e)}syncTextarea()}});
+                    return true;
+                }catch(err){console.warn('[WilmaTools] CKEditor not ready:',err);return false}
+            };
+            if(put())return;
+            let attempts=0;
+            const retry=setInterval(()=>{if(put()||++attempts>=15){clearInterval(retry);if(attempts>=15)console.warn('[WilmaTools] Could not load template into CKEditor')}} ,200);
             return;
         }
-
-        const iframeDoc = getCkeditorIframeDocument();
-        if (iframeDoc && iframeDoc.body) {
-            iframeDoc.body.innerHTML = html || '';
-            dispatchBasicEvents(iframeDoc.body);
-            return;
-        }
-
-        const textarea = $(SEL.bodyTextarea);
-        if (textarea) {
-            textarea.value = html || '';
-            dispatchBasicEvents(textarea);
-        }
+        const iframeDoc=getCkeditorIframeDocument();
+        if(iframeDoc?.body){iframeDoc.body.innerHTML=value;iframeDoc.body.dispatchEvent(new Event('input',{bubbles:true}))}
+        syncTextarea();
     }
 
     function getRecipientButtonSignature(button) {
