@@ -146,3 +146,7 @@ Wilman viestisivun yläreunassa on yhteinen välilehtivalikko **Viesti**, **Vies
 ### Luonnosten tiivis valinta ja vastaanottajien palautus (Viestikirjasto v0.13.3)
 
 Luonnokset-välilehdessä on yksi valintaluettelo, josta valittu automaattitallenne tai historialuonnos avataan suoraan viestieditoriin. Otsikko, muotoiltu viestiteksti ja vastaanottajat pyritään palauttamaan oletuksena. Vastaanottajien palautus ei edellytä erillistä hyväksyntää eikä piilotettujen Wilma-kenttien täsmävertailun onnistumista. Kokonaisten luokkien vastaanottajat palautetaan ensisijaisesti Wilman natiivien URL-parametrien avulla. Yksittäisten henkilöiden palautus käyttää Wilman vastaanottajavalitsinta parhaansa mukaan, eikä sen onnistumista voida taata kaikissa tilanteissa.
+
+### Viestipohjien haku ja käyttö (viestikirjasto v0.14.0)
+
+**Viestipohjat**-välilehdessä on hakukenttä, kategoriasuodatin ja kategorioittain ryhmitelty pudotusvalikko (`optgroup`). Viestipohjan valitseminen käyttää sitä suoraan Wilman viestin kirjoituslomakkeeseen. Muokkaus, vienti, tuonti ja poisto löytyvät suljettavasta **Viestipohjien hallinta** -osiosta, jotta selausnäkymä pysyy kompaktina. CKEditor 4:n viestisisällön syöttö käyttää `setData(html, callback)` -kutsua ja oikeaa HTML-tunnistusta. Toiminta tulee vielä varmistaa oikeassa Wilma-istunnossa.
