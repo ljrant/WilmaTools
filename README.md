@@ -166,3 +166,7 @@ Rinnakkaisen asettelun aiemmassa toteutuksessa Wilman viestilomake siirrettiin t
 ### Yksi viestityökalujen valikko (Toolbar v0.22.0, Viestikirjasto v0.16.1)
 
 Wilman viestin kirjoitussivulla yläreunan erillinen WilmaTools-välilehtirivi on poistettu. Oikeanpuoleisessa Viestikirjastossa on yksi yhtenäinen **Viesti / Viestipohjat / Luonnokset** -välilehtivalikko. Viestipohjien haku, luokittelu, luonnosvalinta ja hallinta toimivat saman näkymän sisällä. Näin päällekkäiset yläpalkit ja kirjaston erilliset valikkopainikkeet poistuvat. Wilman alkuperäistä viestilomaketta ei siirretä DOM-puussa, jotta CKEditor säilyy ehjänä. Avatun vanhan viestin omat työkalut säilyvät yksittäisen viestin sivulla.
+
+### Luonnosten historian säilytys ja välilehdet (v0.16.7)
+
+Yhtenäisessä Viestikirjastossa ovat nyt vain **Viestipohjat**- ja **Luonnokset**-välilehdet. Luonnoshistorian aikaisempi alle kahden minuutin sisällä tallennetun edellisen version poisto on poistettu: aiemmat merkitykselliset versiot säilyvät korkeintaan 35 version historiassa. Säännöllinen tallennus tehdään vain CKEditorin ollessa valmis, eikä tyhjä määräaikaislukema korvaa saman otsikon aiempaa sisältöä. Luonnosvalikossa viimeisintä tallennetta ei näytetä toistamiseen, jos se on jo historiassa. Muutokset eivät palauta ennen päivitystä poistettuja luonnoksia.
