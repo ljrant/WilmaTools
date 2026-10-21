@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Desktop Sidebar
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.18.2
+// @version      0.19.0
 // @description  Finnish-first WilmaTools sidebar on every Wilma page
 // @match        https://*.inschool.fi/*
 // @grant        none
@@ -16,11 +16,14 @@ const t={fi:{tools:'Työkalut',progress:'Ryhmänohjaajan arviointinäkymä',auto
 let lang='fi';try{lang=JSON.parse(localStorage.getItem(KEY)||'{}').lang==='en'?'en':'fi'}catch{}
 const x=k=>t[lang][k],grade=/^\/profiles\/students\/\d+\/choices\/?$/;
 const css=document.createElement('style');css.textContent=`
-#wt-side-toggle{position:fixed;right:18px;top:106px;z-index:2147483500;padding:5px 12px;border:1px solid #ffffff77;border-radius:5px;background:#164b75;color:#fff;font:600 12px/1.5 system-ui;box-shadow:0 2px 5px #0003;cursor:pointer;white-space:nowrap}#wt-side-toggle:hover,#wt-side-toggle:focus-visible{background:#246c9f;outline:2px solid #ffffffaa;outline-offset:1px}
-#wt-side-panel{position:fixed;right:0;top:0;height:100vh;width:min(350px,94vw);z-index:2147483501;background:#fff;color:#243b51;box-shadow:-7px 0 28px #0003;border-left:1px solid #b8cbd9;font:14px/1.4 system-ui;box-sizing:border-box;padding:20px;overflow-y:auto}
-#wt-side-panel[hidden]{display:none!important}#wt-side-panel h2{font-size:20px;margin:0 0 22px}#wt-side-panel .item{border-top:1px solid #e3eaf0;padding:15px 0}#wt-side-panel .item strong{display:block;margin-bottom:8px}#wt-side-panel button,#wt-side-panel select,#wt-home-shortcut{padding:9px 12px;background:#e9f2f8;border:1px solid #a9bfd2;color:#153c5b;border-radius:7px;cursor:pointer;font:inherit}#wt-side-panel p{color:#596f82;font-size:12px}#wt-home-shortcut{display:inline-block;text-decoration:none;background:#155b92;color:white;font-weight:700;margin:10px 0}
+#wt-side-toggle{display:none!important}
+#wt-side-panel{position:fixed;bottom:0;left:0;right:0;top:auto;z-index:10020;background:#f4f7f9;border-top:1px solid #cad5dc;box-shadow:0 -1px 5px #0001;padding:5px 14px;font:12px system-ui;color:#345;box-sizing:border-box;display:flex;gap:8px;align-items:center;flex-wrap:wrap;min-height:31px}
+#wt-side-panel button,#wt-side-panel select{font:inherit;border:0;background:transparent;color:#285779;padding:3px 7px;cursor:pointer;border-radius:4px}#wt-side-panel button:hover{background:#e3ebf2}
+#wt-side-panel h2{font-size:12px;margin:0 9px 0 0;font-weight:600}#wt-side-panel .item{display:contents}
+@media(max-width:640px){#wt-side-panel{position:static}}
 `;document.head.append(css);
-const btn=document.createElement('button');btn.id='wt-side-toggle';btn.textContent='WilmaTools';const panel=document.createElement('aside');panel.id='wt-side-panel';panel.hidden=true;document.body.append(btn,panel);
+const btn=document.createElement('button');btn.id='wt-side-toggle';btn.hidden=true;
+const panel=document.createElement('nav');panel.id='wt-side-panel';panel.setAttribute('aria-label','WilmaTools');document.body.append(panel);
 const label=(tag,text)=>{const a=document.createElement(tag);a.textContent=text;return a};
 const savedGrade=()=>{const value=localStorage.getItem(lastKey)||'';return /^\/profiles\/students\/\d+\/choices(?:\/?|\/?\?.*)$/.test(value)?value:null};
 const route=()=>grade.test(location.pathname)?location.pathname+'?view=gradebook':savedGrade();
@@ -39,51 +42,24 @@ function openMessageLibrary(section){
 }
 function templateEditor(){openMessageLibrary('templates')}
 function draftSidebar(){openMessageLibrary('drafts')}
-function draw(){panel.replaceChildren();panel.append(label('h2','WilmaTools'));const close=label('button',x('close'));close.onclick=()=>{panel.hidden=true};panel.append(close);
-const tools=[{name:'autosave',click:draftSidebar},{name:'write',click:()=>location.assign('/messages/compose')}];
-tools.push({name:'templates',click:templateEditor},{name:'drafts',click:draftSidebar});
-for(const a of tools){const item=label('div','');item.className='item';item.append(label('strong',x(a.name)));const b=label('button',x('open'));b.onclick=a.click;item.append(b);panel.append(item)}
-const setting=label('div','');setting.className='item';setting.append(label('strong',x('settings')));const select=document.createElement('select');for(const [code,name]of [['fi','Suomi'],['en','English']]){const op=label('option',name);op.value=code;select.append(op)}select.value=lang;select.onchange=()=>{lang=select.value;let s={};try{s=JSON.parse(localStorage.getItem(KEY)||'{}')}catch{}s.lang=lang;localStorage.setItem(KEY,JSON.stringify(s));window.dispatchEvent(new CustomEvent('wilmatools:language',{detail:lang}));draw()};setting.append(label('span',x('language')+' '),select);panel.append(setting,label('p',x('hint')));
+function draw(){
+ panel.replaceChildren();
+ const heading=label('h2','WilmaTools');panel.append(heading);
+ const commands=[
+  [lang==='fi'?'Kirjoita viesti':'Compose',()=>location.assign('/messages/compose')],
+  [lang==='fi'?'Viestipohjat':'Templates',()=>templateEditor()],
+  [lang==='fi'?'Luonnokset':'Drafts',()=>draftSidebar()]
+ ];
+ for(const [name,fn] of commands){const control=label('button',name);control.type='button';control.onclick=fn;panel.append(control)}
+ const language=label('select','');
+ for(const [code,name]of [['fi','FI'],['en','EN']]){const opt=label('option',name);opt.value=code;language.append(opt)}
+ language.value=lang;language.setAttribute('aria-label','Kieli');
+ language.onchange=()=>{lang=language.value;let settings={};try{settings=JSON.parse(localStorage.getItem(KEY)||'{}')}catch{}settings.lang=lang;localStorage.setItem(KEY,JSON.stringify(settings));draw()};
+ panel.append(language);
 }
-// Align the always-visible launcher with the account/school/invitations block
-// in Wilma's dark-blue header; keep fixed viewport coordinates while scrolling.
-function placeHeaderButton(){
- const labels=[...document.querySelectorAll('a,button,span,div')].filter(el=>{
-  if(el.closest('#wt-side-panel,#wt-side-toggle'))return false;
-  const v=(el.textContent||'').replace(/\s+/g,' ').trim();
-  return v.length<85&&/^(Lähetä tapahtumakutsuja|Send event invitations)$/i.test(v);
- });
- const invite=labels.find(el=>el.matches('a,button'))||labels[0];
- if(invite){
-  const rect=invite.getBoundingClientRect();
-  if(rect.width&&rect.top>=-2&&rect.top<210){
-   const right=Math.max(12,Math.min(window.innerWidth-110,window.innerWidth-rect.right));
-   btn.style.right=right+'px';
-   btn.style.top=Math.min(190,Math.max(6,rect.bottom+5))+'px';
-   return true;
-  }
- }
- // Conservative header fallback if Wilma's invitation wording differs.
- const header=document.querySelector('header,.navbar-header,.navbar-inverse,.navbar-fixed-top');
- if(header){
-  const rect=header.getBoundingClientRect();
-  if(rect.width&&rect.top>=-2&&rect.bottom>35){
-   btn.style.right='18px';
-   btn.style.top=Math.min(180,Math.max(8,rect.bottom-33))+'px';
-   return true;
-  }
- }
- return false;
-}
-placeHeaderButton();
-let wtHeaderChecks=0;
-const wtHeaderTimer=setInterval(()=>{placeHeaderButton();if(++wtHeaderChecks>=10)clearInterval(wtHeaderTimer)},800);
-window.addEventListener('resize',placeHeaderButton);
-btn.onclick=()=>{panel.hidden=!panel.hidden;if(!panel.hidden)draw()};
-window.addEventListener('wilmatools:open-templates',()=>{panel.hidden=false;templateEditor()});
-window.addEventListener('wilmatools:open-drafts',()=>{panel.hidden=false;draftSidebar()});
-document.addEventListener('keydown',e=>{if(e.key==='Escape')panel.hidden=true});
-
+draw();
+window.addEventListener('wilmatools:open-templates',()=>templateEditor());
+window.addEventListener('wilmatools:open-drafts',()=>draftSidebar());
 
 function safePath(a){try{const u=new URL(a.getAttribute('href'),location.href);return u.origin===location.origin?u.pathname+u.search:null}catch{return null}}
 function txt(s){return String(s||'').replace(/\s+/g,' ').trim()}
