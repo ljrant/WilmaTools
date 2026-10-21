@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Message Autosaver (Chrome Desktop)
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.16.9
+// @version      0.16.10
 // @description  Chrome desktop local Wilma compose autosave: subject, body and recipients.
 // @match        https://*.inschool.fi/messages/compose*
 // @run-at       document-start
@@ -849,7 +849,8 @@
       function draw(){
        aside.replaceChildren();aside.append(navigation);refreshNavigation();const header=label('h2','Viestikirjasto');header.style.margin='0 0 10px';aside.append(header);
        if(tab==='drafts'){
-        const drafts=[...listHistory()];
+        const seenSubjects=new Set();
+        const drafts=listHistory().filter(item=>{const key=String(item.subject||'').trim().toLocaleLowerCase('fi')||'(nimetön)';if(seenSubjects.has(key))return false;seenSubjects.add(key);return true});
         const latest=loadDraft();
         if(latest&&!drafts.some(x=>x.subject===latest.subject))drafts.unshift({...latest,time:latest.savedAt||new Date().toISOString(),_latest:true});
         const heading=label('label','Valitse luonnos');heading.style.cssText='display:block;font-weight:600;margin:12px 0 4px';
