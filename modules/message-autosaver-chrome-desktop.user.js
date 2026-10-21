@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Message Autosaver (Chrome Desktop)
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.12.3
+// @version      0.12.4
 // @description  Chrome desktop local Wilma compose autosave: subject, body and recipients.
 // @match        https://*.inschool.fi/messages/compose*
 // @run-at       document-start
@@ -679,7 +679,7 @@
         const divider=block[1].indexOf('\n\n');if(divider<0)throw Error('Pohjan sisältö puuttuu: '+(index+1));
         const meta={};
         for(const line of block[1].slice(0,divider).split('\n')){
-          const m=line.match(/^([a-z]+):\s*(.*)$/);if(!m)throw Error('Virheellinen otsake: '+line);
+          const m=line.match(/^([a-z_]+):\s*(.*)$/);if(!m)throw Error('Virheellinen otsake: '+line);
           meta[m[1]]=m[2];
         }
         if(!meta.nimi)throw Error('Pohjan nimi puuttuu');
