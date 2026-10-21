@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Desktop Sidebar
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.20.1
+// @version      0.20.2
 // @description  Finnish-first WilmaTools sidebar on every Wilma page
 // @match        https://*.inschool.fi/*
 // @grant        none
@@ -294,7 +294,7 @@ function installUnifiedMessageBar(){
    if(!body||!body.textContent.trim()){alert('Viestisisältöä ei löydy. Odota viestin latautumista.');return}
    const h=main.querySelector('h1');
    const subject=(h?.textContent||'').trim().slice(0,250);
-   localStorage.setItem('wilmatools.sentTemplateImport.v1',JSON.stringify({subject,body:(body.innerText||body.textContent||'').trim(),createdAt:Date.now()}));
+   localStorage.setItem('wilmatools.sentTemplateImport.v1',JSON.stringify({subject,body:(body.innerText||body.textContent||'').trim(),bodyHtml:body.innerHTML,createdAt:Date.now()}));
    location.assign('/messages/compose#wt-library-templates');
  });
  if(compose)button('Tallenna nykyinen pohjaksi',()=>window.dispatchEvent(new CustomEvent('wilmatools:save-compose-template')));
