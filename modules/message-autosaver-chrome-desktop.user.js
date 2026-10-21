@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Message Autosaver (Chrome Desktop)
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.16.1
+// @version      0.16.2
 // @description  Chrome desktop local Wilma compose autosave: subject, body and recipients.
 // @match        https://*.inschool.fi/messages/compose*
 // @run-at       document-start
@@ -939,7 +939,8 @@
     }
     function addLibraryEntry(){
       if(document.getElementById('wt-library-entry'))return;
-      const button=document.createElement('button');button.id='wt-library-entry';button.type='button';button.textContent='Viestikirjasto';button.style.cssText='display:inline-block;margin:8px 0;padding:7px 12px;background:#e9f1f6;color:#164c77;border:1px solid #b8ccda;border-radius:5px;cursor:pointer';button.onclick=library;const subject=$(SEL.subject);const form=subject?.closest('form');const target=form?.querySelector('#wff-Subject')?.parentElement||subject?.parentElement;if(!document.getElementById('wt-message-toolbar')){if(target)target.insertAdjacentElement('afterend',button);else document.body.append(button)}
+      // The unified Viestikirjasto is already visible beside the editor.
+      document.getElementById('wt-library-entry')?.remove();
       library();
       const savedRestore=safeRead('wilmatools.draftRestore.v1',null);
       if(savedRestore&&Date.now()-savedRestore.createdAt<120000){localStorage.removeItem('wilmatools.draftRestore.v1');applySaved(savedRestore,false)}
