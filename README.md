@@ -170,3 +170,7 @@ Wilman viestin kirjoitussivulla yläreunan erillinen WilmaTools-välilehtirivi o
 ### Luonnosten historian säilytys ja välilehdet (v0.16.7)
 
 Yhtenäisessä Viestikirjastossa ovat nyt vain **Viestipohjat**- ja **Luonnokset**-välilehdet. Luonnoshistorian aikaisempi alle kahden minuutin sisällä tallennetun edellisen version poisto on poistettu: aiemmat merkitykselliset versiot säilyvät korkeintaan 35 version historiassa. Säännöllinen tallennus tehdään vain CKEditorin ollessa valmis, eikä tyhjä määräaikaislukema korvaa saman otsikon aiempaa sisältöä. Luonnosvalikossa viimeisintä tallennetta ei näytetä toistamiseen, jos se on jo historiassa. Muutokset eivät palauta ennen päivitystä poistettuja luonnoksia.
+
+### Viestipohjan muokkaus ja luonnosvälilehden nimi (v0.16.8)
+
+Viestipohjan voi valita hakua ja kategoriasuodatinta käyttävällä valikolla ja avata sen muokattavaksi **Muokkaa valittua** -toiminnolla. Muokkaus avaa saman viestipohjaeditorin, jossa voi muuttaa nimeä, kategorioita, aihetta, muotoiltua sisältöä, vastaanottajavalintoja ja muita asetuksia. **Luonnokset**-välilehden uusi nimi on **Tallennetut luonnokset**. Viestikirjaston välilehdet säilyvät näkyvissä muokkausnäkymässä.
