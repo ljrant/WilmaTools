@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Message Autosaver (Chrome Desktop)
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.16.8
+// @version      0.16.9
 // @description  Chrome desktop local Wilma compose autosave: subject, body and recipients.
 // @match        https://*.inschool.fi/messages/compose*
 // @run-at       document-start
@@ -651,13 +651,16 @@
     function historySave(draft){
       const history=listHistory();
       const stamp=Date.now();
-      const signature=JSON.stringify([draft.subject,draft.bodyHtml,draft.recipients?.inputs,draft.recipients?.text,draft.recipientQuery]);
-      const last=history[0];
-      if(last&&last.signature===signature)return;
-      // Never destroy a previous recoverable version merely because two saves
-      // happened close together. Keep the most recent 35 meaningful versions.
-      history.unshift({id:stamp,time:stamp,signature,subject:draft.subject,bodyHtml:draft.bodyHtml,recipients:draft.recipients,recipientQuery:draft.recipientQuery||[]});
-      localStorage.setItem(HISTORY_KEY,JSON.stringify(history.slice(0,35)));
+      const signature=JSON.stringify([draft.subject,draft.bodyHtml]);
+      const newest=history[0];
+      if(newest&&JSON.stringify([newest.subject,newest.bodyHtml])===signature)return;
+      // Keep one current entry for the active message and retain older message
+      // subjects as separate entries; previous draft versions remain in the
+      // main autosave slot until explicitly replaced.
+      const key=String(draft.subject||'').trim().toLocaleLowerCase('fi')||'(nimetön)';
+      const rest=history.filter(x=>(String(x.subject||'').trim().toLocaleLowerCase('fi')||'(nimetön)')!==key);
+      rest.unshift({id:stamp,time:stamp,signature,subject:draft.subject,bodyHtml:draft.bodyHtml,recipients:draft.recipients,recipientQuery:draft.recipientQuery||[]});
+      localStorage.setItem(HISTORY_KEY,JSON.stringify(rest.slice(0,35)));
       window.dispatchEvent(new Event('wilmatools:drafts-changed'));
     }
     // WMT/TXT v1: shareable templates only. No snapshots or draft history exported.
@@ -848,14 +851,14 @@
        if(tab==='drafts'){
         const drafts=[...listHistory()];
         const latest=loadDraft();
-        if(latest&&!drafts.some(x=>x.subject===latest.subject&&x.bodyHtml===latest.bodyHtml))drafts.unshift({...latest,time:latest.savedAt||new Date().toISOString(),_latest:true});
+        if(latest&&!drafts.some(x=>x.subject===latest.subject))drafts.unshift({...latest,time:latest.savedAt||new Date().toISOString(),_latest:true});
         const heading=label('label','Valitse luonnos');heading.style.cssText='display:block;font-weight:600;margin:12px 0 4px';
         const select=document.createElement('select');select.style.cssText='width:100%;max-width:100%;padding:8px;border:1px solid #b9cbd9;border-radius:5px';
         const placeholder=label('option','Valitse tallenne…');placeholder.value='';select.append(placeholder);
         drafts.forEach((item,i)=>{const date=new Date(item.time||item.savedAt);const when=Number.isNaN(date.getTime())?'':date.toLocaleString('fi-FI');const option=label('option',(item._latest?'Viimeisin automaattitallenne':'Luonnos')+' · '+(item.subject||'Nimetön')+' · '+when);option.value=String(i);select.append(option)});
-        select.onchange=()=>{if(select.value==='')return;const draft=drafts[Number(select.value)];if(!draft)return;applySaved(draft,true);select.value='';};
+        select.onchange=()=>{if(select.value==='')return;const draft=drafts[Number(select.value)];if(!draft)return;applySaved(draft,false);select.value='';};
         aside.append(heading,select);
-        const count=label('p',drafts.length+' tallennetta. Valinta palauttaa otsikon, tekstin ja vastaanottajat.');count.style.cssText='font-size:12px;color:#607080;margin:8px 0';aside.append(count);
+        const count=label('p',drafts.length+' tallennetta. Valinta palauttaa otsikon ja tekstin muuttamatta vastaanottajia.');count.style.cssText='font-size:12px;color:#607080;margin:8px 0';aside.append(count);
        }else{
         const data=getTemplates(),cats=['Kaikki',...new Set(data.flatMap(templateCats))].sort((a,b)=>a==='Kaikki'?-1:b==='Kaikki'?1:a.localeCompare(b,'fi'));
         const search=label('input','');search.type='search';search.placeholder='Hae viestipohjia…';search.setAttribute('aria-label','Hae viestipohjia');search.style.cssText='width:100%;padding:8px;margin:6px 0;border:1px solid #b9cbd9;border-radius:5px';
@@ -1037,7 +1040,7 @@
             if (!ok) return;
         }
 
-        applySaved(draft,true);
+        applySaved(draft,false);
         const bodyLen=stripHtml(draft.bodyHtml||'').trim().length;
         setIndicator('Wilma Autosaver: restored draft | body '+bodyLen+' chars','ok');
         updateInfo();
