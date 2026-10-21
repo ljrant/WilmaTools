@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Message Autosaver (Chrome Desktop)
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.16.3
+// @version      0.16.4
 // @description  Chrome desktop local Wilma compose autosave: subject, body and recipients.
 // @match        https://*.inschool.fi/messages/compose*
 // @run-at       document-start
@@ -987,13 +987,13 @@
 
             const json = JSON.stringify(draft);
 
-            if (json === lastSavedJson) {
+            if (JSON.stringify([draft.subject,draft.bodyHtml,draft.recipients?.text,draft.recipientQuery])===lastSavedJson) {
                 return;
             }
 
             localStorage.setItem(STORAGE_KEY, json);
             historySave(draft);
-            lastSavedJson = json;
+            lastSavedJson = JSON.stringify([draft.subject,draft.bodyHtml,draft.recipients?.text,draft.recipientQuery]);
 
             const bodyLen = stripHtml(draft.bodyHtml).trim().length;
             const recCount = draft.recipients.inputs.length;
@@ -1227,7 +1227,9 @@
 
             attachListeners();
 
-            // Event-driven autosave only.
+            // Save CKEditor content periodically too: some Wilma editor changes
+            // do not emit the events observed by the userscript.
+            if(tries%8===0)saveDraft('periodic');
 
             updateInfo();
         }, 1000);
