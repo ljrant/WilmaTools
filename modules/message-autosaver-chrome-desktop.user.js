@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Message Autosaver (Chrome Desktop)
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.13.0
+// @version      0.13.1
 // @description  Chrome desktop local Wilma compose autosave: subject, body and recipients.
 // @match        https://*.inschool.fi/messages/compose*
 // @run-at       document-start
@@ -176,7 +176,7 @@
                 return;
             }
 
-            await restoreRecipients(draft.recipients);
+            // Individual recipients are not restored automatically.
         });
 
         $('#wilma-as-clear').addEventListener('click', () => {
@@ -846,7 +846,7 @@
        const names=safeReadSession('wilmatools.recipientReminder.v1',[]);
        if(names.length){const note=label('div','Valitse Wilmassa vastaanottajat: '+names.join(', '));note.style.cssText='padding:9px;background:#fff6da;border:1px solid #e3cd91;border-radius:6px';aside.append(note);aside.append(b('Vastaanottajat tarkistettu',()=>{sessionStorage.removeItem('wilmatools.recipientReminder.v1');draw()}))}
        if(recipientStatus){const receipt=label('p',recipientStatus);receipt.style.cssText='padding:8px;background:#fff7e5;border-radius:5px;color:#69501e';aside.append(receipt)}
-       const hint=label('p','Vastaanottajat on tarkistettava Wilmassa ennen lähettämistä. Tallenteet säilyvät vain tässä selaimessa.');hint.style.color='#687987';aside.append(hint)
+       const hint=label('p','Tallenteet säilyvät vain tässä selaimessa.');hint.style.color='#687987';aside.append(hint)
       }
       function editor(){
        aside.replaceChildren();aside.append(label('h2','Viestipohja'));
@@ -879,7 +879,7 @@
       }
       if(pendingTemplate)editor();else draw();
       window.addEventListener('wilmatools:drafts-changed',()=>{if(!aside.hidden&&tab==='drafts')draw()});
-      window.addEventListener('wilmatools:recipients-verified',e=>{recipientStatus=e.detail.verified?'Tallennetut vastaanottajakentät vastasivat valintaa. Tarkista silti vastaanottajat.':'Vastaanottajien palautusta ei voitu vahvistaa. Valitse vastaanottajat Wilmassa.';draw()});
+
     }
     function addLibraryEntry(){
       if(document.getElementById('wt-library-entry'))return;
@@ -969,7 +969,7 @@
             if (!ok) return;
         }
 
-        await restoreRecipients(draft.recipients);
+        // Individual recipients are not restored automatically.
 
         const subject = $(SEL.subject);
         if (subject) {
