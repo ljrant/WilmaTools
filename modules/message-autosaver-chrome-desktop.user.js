@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Message Autosaver (Chrome Desktop)
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.16.0
+// @version      0.16.1
 // @description  Chrome desktop local Wilma compose autosave: subject, body and recipients.
 // @match        https://*.inschool.fi/messages/compose*
 // @run-at       document-start
@@ -819,7 +819,7 @@
       const navigation=document.createElement('nav');navigation.setAttribute('aria-label','WilmaTools');navigation.id='wt-library-tabs';
       for(const [key,name] of [['message','Viesti'],['templates','Viestipohjat'],['drafts','Luonnokset']]){
         const control=document.createElement('button');control.type='button';control.textContent=name;control.dataset.tab=key;
-        control.onclick=()=>{if(key==='message'){aside.hidden=true;return}tab=key;aside.hidden=false;draw()};
+        control.onclick=()=>{tab=key;aside.hidden=false;draw()};
         navigation.append(control);
       }
       navigation.style.cssText='display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid #ccc;padding:0 0 8px;margin-bottom:8px';
@@ -837,7 +837,9 @@
       const label=(tag,text)=>{const e=document.createElement(tag);e.textContent=text;return e};
       function draw(){
        aside.replaceChildren();aside.append(navigation);refreshNavigation();const header=label('h2','Viestikirjasto');header.style.margin='0 0 10px';aside.append(header);
-       if(tab==='drafts'){
+       if(tab==='message'){
+        aside.append(label('p','Viestin kirjoittaminen ja muokkaaminen tapahtuvat Wilman omassa tekstikentässä.'));
+       }else if(tab==='drafts'){
         const drafts=[...listHistory()];
         const latest=loadDraft();
         if(latest)drafts.unshift({...latest,time:latest.savedAt||new Date().toISOString(),_latest:true});
