@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Message Autosaver (Chrome Desktop)
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.12.2
+// @version      0.12.3
 // @description  Chrome desktop local Wilma compose autosave: subject, body and recipients.
 // @match        https://*.inschool.fi/messages/compose*
 // @run-at       document-start
@@ -609,6 +609,18 @@
         const bodyHtml = getBodyHtml();
         const recipients = getRecipientsSnapshot();
         const recipientQuery=location.search.match(/(?:^|[?&])r_class(?:guardian)?=\d+/g)||[];
+        // When Wilma strips query arguments after selection, infer only uniquely
+        // identified whole-class chips; never infer individual people.
+        if(!recipientQuery.length){
+          const labels=new Set([...(recipients.visualItems||[])].flatMap(x=>[x.title,x.text]).map(x=>String(x||'').trim()).filter(Boolean));
+          for(const disclosure of document.querySelectorAll('a.disclosure[href^="#collapse-school-classes-"]')){
+            const id=(disclosure.getAttribute('href')||'').match(/^#collapse-school-classes-(\d+)-/);
+            const name=disclosure.textContent.trim();
+            if(!id||!name)continue;
+            if(labels.has(name))recipientQuery.push('r_class='+id[1]);
+            if(labels.has(name+':n huoltajat'))recipientQuery.push('r_classguardian='+id[1]);
+          }
+        }
 
         return {
             version: 5,
