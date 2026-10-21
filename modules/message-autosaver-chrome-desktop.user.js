@@ -693,8 +693,8 @@
         await sleep(700);
         const normalize=x=>normalizeText(x||'');
         const exact=normalize(name);
-        const candidates=$all('button, [role="button"]',document).filter(b=>{
-          if(!b.offsetWidth||b.closest('#wt-message-library'))return false;
+        const candidates=$all(SEL.recipientButtons,document).filter(b=>{
+          if(!b.getClientRects().length||b.closest('#wt-message-library'))return false;
           const sig=getRecipientButtonSignature(b);
           return [sig.text,sig.title,sig.ariaLabel].some(x=>normalize(x)===exact);
         });
@@ -705,7 +705,7 @@
       const snapshot=getRecipientsSnapshot(),visible=normalizeText(snapshot.text||'');
       return {selected:selected.filter(x=>visible.includes(normalizeText(x))),missing:[...new Set([...missing,...selected.filter(x=>!visible.includes(normalizeText(x)))])]};
     }
-    function getTemplates(){return safeRead(TEMPLATE_KEY,[]).filter(x=>x&&typeof x.title==='string').slice(0,60)}
+    function getTemplates(){return safeRead(TEMPLATE_KEY,[]).filter(x=>x&&typeof x.title==='string').slice(0,150)}
     function useTemplate(item){
       const vals={paivamaara:new Date().toLocaleDateString('fi-FI')};
       try{
@@ -741,7 +741,7 @@
          const row=label('div','');row.style.cssText='border-bottom:1px solid #ddd;padding:9px 0';
          row.append(label('strong',item.subject||'Nimetön viesti'),label('div',new Date(item.time).toLocaleString('fi-FI')));
          row.append(b('Palauta',()=>{if(confirm('Korvataanko viestin sisältö tallenteella?'))applySaved(item,true)}));
-         row.append(b('Tallenna pohjaksi',()=>{const arr=getTemplates();arr.push({title:item.subject||'Uusi pohja',category:'Yleinen',subject:item.subject,body:item.bodyHtml,recipients:item.recipients});localStorage.setItem(TEMPLATE_KEY,JSON.stringify(arr));tab='templates';draw()}));aside.append(row)
+         row.append(b('Tallenna pohjaksi',()=>{if(!confirm('Luonnoksessa voi olla henkilötietoja. Tarkista ja poista ne ennen pohjan jakamista. Luodaanko muokattava pohja?'))return;const arr=getTemplates();arr.push({title:item.subject||'Uusi pohja',category:'Yleinen',subject:item.subject,body:item.bodyHtml,recipientRule:'ei_valintaa',recipients:null});localStorage.setItem(TEMPLATE_KEY,JSON.stringify(arr));tab='templates';draw()}));aside.append(row)
         }
        }else{
         const data=getTemplates(),cats=['Kaikki',...new Set(data.map(x=>x.category||'Yleinen'))];
@@ -752,7 +752,7 @@
         const upload=document.createElement('input');upload.type='file';upload.accept='.txt,text/plain';upload.style.maxWidth='100%';
         upload.onchange=async()=>{const file=upload.files?.[0];if(!file)return;
           try{if(file.size>500000)throw Error('Tiedosto on liian suuri');const incoming=importWmt(await file.text());
-            if(!confirm('Tuodaanko '+incoming.length+' viestipohjaa? Samannimisiä pohjia ei korvata automaattisesti.'))return;
+            if(!confirm('Tuotavat viestipohjat ('+incoming.length+'):\n'+incoming.map(x=>x.title+' ['+x.category+']').join('\n').slice(0,1300)+'\n\nTuodaanko nämä pohjat?'))return;
             const all=getTemplates();localStorage.setItem(TEMPLATE_KEY,JSON.stringify([...all,...incoming].slice(0,150)));draw();
           }catch(err){alert('Tuonti epäonnistui: '+err.message)}
         };aside.append(upload);
