@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Desktop Sidebar
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.20.2
+// @version      0.21.0
 // @description  Finnish-first WilmaTools sidebar on every Wilma page
 // @match        https://*.inschool.fi/*
 // @grant        none
@@ -281,14 +281,20 @@ function installUnifiedMessageBar(){
  bar.setAttribute('aria-label','WilmaTools viestityökalut');
  bar.style.cssText='display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding:7px 9px;margin:0 0 12px;background:#f6f8fa;border:1px solid #d8e1e8;border-radius:5px;font:12px system-ui;color:#29465c;max-width:100%;box-sizing:border-box;';
  const brand=document.createElement('strong');brand.textContent='WilmaTools';brand.style.cssText='font-size:12px;margin-right:6px';bar.append(brand);
- const button=(name,action)=>{const b=document.createElement('button');b.type='button';b.textContent=name;b.style.cssText='background:#fff;color:#2a5676;border:1px solid #cfdae2;border-radius:4px;padding:5px 9px;cursor:pointer;font:12px system-ui';b.addEventListener('click',action);bar.append(b);return b};
- const openLibrary=section=>{
-  if(compose){window.dispatchEvent(new CustomEvent('wilmatools:show-library',{detail:{section}}));return}
-  location.assign('/messages/compose#'+(section==='drafts'?'wt-library':'wt-library-templates'));
+ const button=(name,action)=>{const b=document.createElement('button');b.type='button';b.textContent=name;b.setAttribute('role','tab');b.setAttribute('aria-selected','false');b.style.cssText='background:transparent;color:#2a5676;border:0;border-bottom:2px solid transparent;padding:7px 11px;cursor:pointer;font:13px system-ui';b.addEventListener('click',action);bar.append(b);return b};
+ bar.setAttribute('role','tablist');
+ const activate=(name)=>{
+  for(const b of bar.querySelectorAll('[role="tab"]')){
+   const active=b.dataset.tab===name;b.setAttribute('aria-selected',String(active));
+   b.style.borderBottomColor=active?'#27648b':'transparent';
+   b.style.fontWeight=active?'600':'400';
+  }
+  if(compose)window.dispatchEvent(new CustomEvent('wilmatools:show-library',{detail:{section:name}}));
  };
- button('Viestipohjat',()=>openLibrary('templates'));
- button('Luonnokset',()=>openLibrary('drafts'));
- if(!compose)button('Tallenna viestipohjaksi',()=>{
+ const message=button('Viesti',()=>activate('message'));message.dataset.tab='message';
+ const templates=button('Viestipohjat',()=>{if(compose)activate('templates');else location.assign('/messages/compose#wt-library-templates')});templates.dataset.tab='templates';
+ const drafts=button('Luonnokset',()=>{if(compose)activate('drafts');else location.assign('/messages/compose#wt-library')});drafts.dataset.tab='drafts';
+ if(!compose){const save=button('Tallenna viestipohjaksi',()=>{
    const frame=document.querySelector('iframe#message-wrapper');
    const body=frame?.contentDocument?.querySelector('body > .ckeditor, body .ckeditor');
    if(!body||!body.textContent.trim()){alert('Viestisisältöä ei löydy. Odota viestin latautumista.');return}
@@ -296,8 +302,11 @@ function installUnifiedMessageBar(){
    const subject=(h?.textContent||'').trim().slice(0,250);
    localStorage.setItem('wilmatools.sentTemplateImport.v1',JSON.stringify({subject,body:(body.innerText||body.textContent||'').trim(),bodyHtml:body.innerHTML,createdAt:Date.now()}));
    location.assign('/messages/compose#wt-library-templates');
- });
- if(compose)button('Tallenna nykyinen pohjaksi',()=>window.dispatchEvent(new CustomEvent('wilmatools:save-compose-template')));
+  });save.setAttribute('role','button')}
+ else{const save=button('Tallenna nykyinen pohjaksi',()=>{activate('templates');window.dispatchEvent(new CustomEvent('wilmatools:save-compose-template'))});save.setAttribute('role','button')}
+ const active=compose?(location.hash==='#wt-library'?'drafts':location.hash==='#wt-library-templates'?'templates':'message'):'message';
+ for(const b of bar.querySelectorAll('[role="tab"]')){const yes=b.dataset.tab===active;b.setAttribute('aria-selected',String(yes));b.style.borderBottomColor=yes?'#27648b':'transparent'}
+ window.addEventListener('wilmatools:library-closed',()=>{for(const b of bar.querySelectorAll('[role="tab"]')){const yes=b.dataset.tab==='message';b.setAttribute('aria-selected',String(yes));b.style.borderBottomColor=yes?'#27648b':'transparent'}});
  main.insertAdjacentElement('afterbegin',bar);
 }
 if(/^\/messages\//.test(location.pathname)){
