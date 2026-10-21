@@ -10,7 +10,7 @@ Asenna Tampermonkey ja haluamasi skriptit. Tietokoneella sivupaneeli ja varsinai
 
 | Työkalu | Versio | Asennus |
 | --- | --- | --- |
-| WilmaTools-sivupaneeli (tietokone) | 0.18.0 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/desktop-toolbar.user.js) |
+| WilmaTools-sivupaneeli (tietokone) | 0.18.1 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/desktop-toolbar.user.js) |
 | Ryhmänohjaajan opintoseuranta | 0.19.2 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/WilmaTools.user.js) |
 | Viestiluonnosten tallennus – Chrome tietokoneella | 0.9.2 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-chrome-desktop.user.js) |
 | Viestiluonnosten tallennus – Firefox Androidissa (kokeellinen) | 0.6.0 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-firefox-android.user.js) |
@@ -105,3 +105,5 @@ Vientitiedostoon sisällytetään **vain viestipohjat**, ei automaattitallennett
 ### Yhdistetyt vastaanottajat
 
 Viestipohjan vastaanottajatavaksi voi valita **Ryhmiä ja yksittäisiä henkilöitä** (`yhdistelma`). Erillisiin kenttiin kirjoitetaan yksi ryhmä tai luokka sekä yksi henkilö per rivi. `.wmt.txt`-tiedoston otsaketietoihin tallentuvat `ryhmat: 26G` ja `henkilot: Etunimi Sukunimi; Toinen Opettaja`. Viestimoottori yrittää valita sekä ryhmät että yksittäiset henkilöt Wilman vastaanottajavalitsimesta. Täsmäämättömät valinnat näytetään käyttäjälle. Ryhmän jäsenten nimiä ei lisätä henkilökohtaisten tekstimuuttujien arvoiksi; yhteisviestissä ei voi käyttää `{etunimi}`-muuttujaa. Ryhmien ja henkilöiden automaattivalinta on kokeellinen ja vastaanottajat tulee tarkistaa Wilmassa ennen lähettämistä. Huomaa, että jaettu viestipohja sisältää siihen kirjoitetut henkilöiden nimet.
+
+**Sivupaneeli v0.18.1:** Etusivun Viesti opiskelijoille / huoltajille / molemmille -toiminto hyväksyy vain yksiselitteisen ryhmäkohtaisen Wilman viestilinkin. Opiskelijarivin yksittäisen henkilön viestilinkkiä ei enää käytetä ryhmän sijasta. Ellei oikeaa ryhmälinkkiä löydy, toiminto näyttää ilmoituksen eikä avaa väärille vastaanottajille osoitettua viestiä. Ryhmäkohtaisten vastaanottajalinkkien tunnistus vaatii Wilman oikean HTML-rakenteen varmistamisen.
