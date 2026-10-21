@@ -789,8 +789,14 @@
           const safe=document.createElement('div');safe.textContent=String(request.body||'');
           applySaved({subject:String(request.subject||''),bodyHtml:safe.innerHTML.replaceAll('\n','<br>')},false);
         }
-        sessionStorage.setItem('wilmatools.recipientReminder.v1',JSON.stringify(request.recipientsNames));
         library();
+        selectRecipientsByNames(request.recipientsNames).then(result=>{
+          const message=result.missing.length
+           ?'Vastaanottajia ei voitu vahvistaa: '+result.missing.join(', ')+'. Tarkista kaikki vastaanottajat Wilmassa.'
+           :'Vastaanottajavalinnat tehty. Tarkista vastaanottajat Wilmassa ennen lähettämistä.';
+          const box=document.getElementById('wt-message-library');
+          if(box){const notice=document.createElement('p');notice.textContent=message;notice.style.cssText='padding:10px;border:1px solid #d6bd80;background:#fff5db';box.prepend(notice)}
+        }).catch(err=>console.warn('[WilmaTools] Recipients must be chosen manually:',err));
       }
       window.addEventListener('wilmatools:open-library',()=>{const lib=document.getElementById('wt-message-library');if(lib)lib.hidden=false;else library()});
     }
