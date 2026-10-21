@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Desktop Sidebar
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.20.0
+// @version      0.20.1
 // @description  Finnish-first WilmaTools sidebar on every Wilma page
 // @match        https://*.inschool.fi/*
 // @grant        none
@@ -129,11 +129,12 @@ function groupMessageLinks(doc){
  return links;
 }
 async function groupMessage(url,type){
- const match=url.match(/^\/profiles\/classes\/(\d+)\/?$/);
+ const match=String(url||'').match(/\/profiles\/classes\/(\d+)\/?/);
  if(match&&['students','guardians','both'].includes(type)){
-  const request={createdAt:Date.now(),source:'homeroom',recipientClassId:match[1],recipientType:type,recipientsNames:[]};
-  localStorage.setItem('wilmatools.composeRequest.v1',JSON.stringify(request));
-  location.assign('/messages/compose#wt-library');return;
+  const params=new URLSearchParams();
+  if(type==='students'||type==='both')params.set('r_class',match[1]);
+  if(type==='guardians'||type==='both')params.set('r_classguardian',match[1]);
+  location.assign('/messages/compose?'+params.toString());return;
  }
  try{
   const links=groupMessageLinks(await groupDoc(url)),target=links[type]||(type==='group'?links.group:null);
