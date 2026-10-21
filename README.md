@@ -12,7 +12,7 @@ Asenna Tampermonkey ja haluamasi skriptit. Tietokoneella sivupaneeli ja varsinai
 | --- | --- | --- |
 | WilmaTools-sivupaneeli (tietokone) | 0.18.0 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/desktop-toolbar.user.js) |
 | Ryhmänohjaajan opintoseuranta | 0.19.2 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/WilmaTools.user.js) |
-| Viestiluonnosten tallennus – Chrome tietokoneella | 0.9.0 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-chrome-desktop.user.js) |
+| Viestiluonnosten tallennus – Chrome tietokoneella | 0.9.2 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-chrome-desktop.user.js) |
 | Viestiluonnosten tallennus – Firefox Androidissa (kokeellinen) | 0.6.0 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-firefox-android.user.js) |
 
 Skriptit toimivat erikseen Tampermonkeyn kautta ja niitä voi ottaa käyttöön tai poistaa käytöstä itsenäisesti. Pelkkä sivupaneeli ei kerää suorituksia eikä tallenna viestejä. Skriptien osoiterajaus on `https://*.inschool.fi`.
@@ -86,7 +86,7 @@ Arviointinäkymän versiossa **0.18.3** näkymä korvaa ryhmäsivun välilehtial
 
 **Sivupaneeli v0.17.2:** WilmaTools-valikon avauspainike sijoitetaan Wilman tummansinisen otsakealueen oikeaan reunaan, mahdollisuuksien mukaan käyttäjä- ja koulutietojen sekä **Lähetä tapahtumakutsuja** -linkin alapuolelle. Painike pysyy paikallaan sivua vieritettäessä. Varsinainen työkalupaneeli avautuu edelleen painikkeesta.
 
-## Viestikirjasto – Chrome v0.9.0
+## Viestikirjasto – Chrome v0.9.2
 
 Wilman viestin kirjoitussivulla näkyvä **Viestikirjasto** avaa luonnoshistorian ja viestipohjat sisältävän sivupalkin. Tallennin toimii hiljaisesti: ei automaattisia palautuskyselyitä eikä näkyviä tallennusilmoituksia. Luonnoksia tallennetaan selaimen paikalliseen muistiin ja enintään 35 tuoretta versiota säilytetään; lyhyen ajan sisällä tapahtuneita muutoksia yhdistetään.
 
@@ -101,3 +101,7 @@ Chrome-viestikirjaston **Viestipohjat**-välilehdeltä voi tuoda UTF-8-muotoisen
 Vientitiedostoon sisällytetään **vain viestipohjat**, ei automaattitallennettuja luonnoksia tai niiden vastaanottajien henkilökohtaisia tilannekuvia. Viestitekstissä voi silti olla henkilötietoja: tarkista vietävät pohjat ennen jakamista.
 
 **Huomiot**-välilehdeltä viestimoottori siirtää valitut opiskelijat sekä viestin aiheen ja tekstin kirjoituslomakkeeseen, yrittää valita opiskelijat Wilman vastaanottajavalitsimesta täsmäävien nimien perusteella ja ilmoittaa kirjastossa, jos joitakin valintoja ei voitu vahvistaa. WilmaToolsin mukana siirtyvät myös opiskelijoiden tunnisteet tulevaa tarkempaa valintaa varten. **Nykyinen vastaanottajien automaattivalinta perustuu nimeen eikä sitä ole vahvistettu Wilman eri käyttöliittymissä.** Tarkista aina vastaanottajat ennen viestin lähettämistä; ohjelma ei lähetä viestiä automaattisesti.
+
+### Yhdistetyt vastaanottajat
+
+Viestipohjan vastaanottajatavaksi voi valita **Ryhmiä ja yksittäisiä henkilöitä** (`yhdistelma`). Erillisiin kenttiin kirjoitetaan yksi ryhmä tai luokka sekä yksi henkilö per rivi. `.wmt.txt`-tiedoston otsaketietoihin tallentuvat `ryhmat: 26G` ja `henkilot: Etunimi Sukunimi; Toinen Opettaja`. Viestimoottori yrittää valita sekä ryhmät että yksittäiset henkilöt Wilman vastaanottajavalitsimesta. Täsmäämättömät valinnat näytetään käyttäjälle. Ryhmän jäsenten nimiä ei lisätä henkilökohtaisten tekstimuuttujien arvoiksi; yhteisviestissä ei voi käyttää `{etunimi}`-muuttujaa. Ryhmien ja henkilöiden automaattivalinta on kokeellinen ja vastaanottajat tulee tarkistaa Wilmassa ennen lähettämistä. Huomaa, että jaettu viestipohja sisältää siihen kirjoitetut henkilöiden nimet.
