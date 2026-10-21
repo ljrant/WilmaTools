@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Message Autosaver (Chrome Desktop)
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.14.0
+// @version      0.14.1
 // @description  Chrome desktop local Wilma compose autosave: subject, body and recipients.
 // @match        https://*.inschool.fi/messages/compose*
 // @run-at       document-start
@@ -279,39 +279,42 @@
 
     function setBodyHtml(html) {
       const source=String(html||'');
-      const formatted=/<[a-z][\s\S]*>/i.test(source)
+      const value=/<[a-z][\s\S]*>/i.test(source)
         ?source
         :source.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\r?\n/g,'<br>');
-      const textarea=$(SEL.bodyTextarea);
+      // Only CKEditor's own API may write to the live editor. Changing the
+      // iframe or hidden textarea directly leaves editor state out of sync.
+      const token=Symbol('setBodyHtml');
+      setBodyHtml.pending=token;
       let attempts=0;
-      function write() {
+      const put=()=>{
+        if(setBodyHtml.pending!==token)return true;
         const editor=getCkeditorInstance();
-        // Wilma uses CKEditor 4: setData(value, callback) is the stable API.
-        if(editor&&typeof editor.setData==='function'&&editor.status==='ready'){
-          try{
-            editor.setData(formatted,function(){
-              try{editor.updateElement()}catch(e){console.warn('[WilmaTools] Editor sync',e)}
-            });
-            return true;
-          }catch(err){console.warn('[WilmaTools] setData retry:',err)}
+        if(!editor||typeof editor.setData!=='function'||editor.status!=='ready')return false;
+        try{
+          editor.setData(value,{
+            callback:function(){
+              if(setBodyHtml.pending!==token)return;
+              try{
+                if(typeof editor.updateElement==='function')editor.updateElement();
+                if(typeof editor.fire==='function')editor.fire('change');
+              }catch(err){console.warn('[WilmaTools] CKEditor synchronization failed:',err)}
+              setBodyHtml.pending=null;
+            }
+          });
+          return true;
+        }catch(err){
+          console.warn('[WilmaTools] CKEditor setData failed:',err);
+          return false;
         }
-        const iframe=getCkeditorIframeDocument();
-        if(iframe?.body){
-          try{
-            iframe.body.innerHTML=formatted;
-            iframe.body.dispatchEvent(new Event('input',{bubbles:true}));
-            if(textarea)textarea.value=formatted;
-            return true;
-          }catch(err){console.warn('[WilmaTools] Editor iframe retry:',err)}
-        }
-        return false;
-      }
-      if(write())return;
-      if(textarea)textarea.value=formatted;
+      };
+      if(put())return;
       const retry=setInterval(()=>{
-        if(write()||++attempts>=40){
+        if(setBodyHtml.pending!==token||put()){clearInterval(retry);return}
+        if(++attempts>=60){
           clearInterval(retry);
-          if(attempts>=40)console.warn('[WilmaTools] CKEditor ei vastaanottanut viestitekstiä');
+          console.warn('[WilmaTools] CKEditor ei valmistunut: viestitekstiä ei sijoitettu editoriin.');
+          alert('Wilman tekstieditori ei ole valmis. Viestitekstiä ei voitu ladata turvallisesti. Lataa sivu uudelleen ja yritä uudelleen.');
         }
       },250);
     }
