@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Message Autosaver (Chrome Desktop)
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.16.5
+// @version      0.16.6
 // @description  Chrome desktop local Wilma compose autosave: subject, body and recipients.
 // @match        https://*.inschool.fi/messages/compose*
 // @run-at       document-start
@@ -651,11 +651,11 @@
     function historySave(draft){
       const history=listHistory();
       const stamp=Date.now();
-      const signature=JSON.stringify([draft.subject,draft.bodyHtml,draft.recipients?.inputs,draft.recipients?.text]);
+      const signature=JSON.stringify([draft.subject,draft.bodyHtml,draft.recipients?.inputs,draft.recipients?.text,draft.recipientQuery]);
       const last=history[0];
       if(last&&last.signature===signature)return;
-      // Preserve versions at most every 2 minutes, and only on meaningful changes.
-      if(last&&stamp-last.time<120000){history.shift()}
+      // Never destroy a previous recoverable version merely because two saves
+      // happened close together. Keep the most recent 35 meaningful versions.
       history.unshift({id:stamp,time:stamp,signature,subject:draft.subject,bodyHtml:draft.bodyHtml,recipients:draft.recipients,recipientQuery:draft.recipientQuery||[]});
       localStorage.setItem(HISTORY_KEY,JSON.stringify(history.slice(0,35)));
       window.dispatchEvent(new Event('wilmatools:drafts-changed'));
@@ -825,7 +825,7 @@
       }else document.querySelector('main#main-content')?.prepend(aside);
       let tab=location.hash==='#wt-library'?'drafts':'templates',category='Kaikki',edit=-1,recipientStatus='',exportSelected=new Set(),pendingTemplate=null;
       const navigation=document.createElement('nav');navigation.setAttribute('aria-label','WilmaTools');navigation.id='wt-library-tabs';
-      for(const [key,name] of [['message','Viesti'],['templates','Viestipohjat'],['drafts','Luonnokset']]){
+      for(const [key,name] of [['templates','Viestipohjat'],['drafts','Luonnokset']]){
         const control=document.createElement('button');control.type='button';control.textContent=name;control.dataset.tab=key;
         control.onclick=()=>{tab=key;aside.hidden=false;draw()};
         navigation.append(control);
@@ -845,9 +845,7 @@
       const label=(tag,text)=>{const e=document.createElement(tag);e.textContent=text;return e};
       function draw(){
        aside.replaceChildren();aside.append(navigation);refreshNavigation();const header=label('h2','Viestikirjasto');header.style.margin='0 0 10px';aside.append(header);
-       if(tab==='message'){
-        aside.append(label('p','Viestin kirjoittaminen ja muokkaaminen tapahtuvat Wilman omassa tekstikentässä.'));
-       }else if(tab==='drafts'){
+       if(tab==='drafts'){
         const drafts=[...listHistory()];
         const latest=loadDraft();
         if(latest)drafts.unshift({...latest,time:latest.savedAt||new Date().toISOString(),_latest:true});
@@ -980,6 +978,9 @@
         if(setBodyHtml.pending)return;
         try {
             const draft = collectDraft();
+            const previous=loadDraft();
+            // A temporarily blank editor must not erase an existing populated body.
+            if(previous&&stripHtml(previous.bodyHtml||'').trim()&&!stripHtml(draft.bodyHtml||'').trim()&&draft.subject===previous.subject&&reason==='periodic')return;
 
             if (!isMeaningfulDraft(draft)) {
                 setIndicator('Wilma Autosaver: running, nothing to save yet', 'ok');
@@ -1230,7 +1231,7 @@
 
             // Save CKEditor content periodically too: some Wilma editor changes
             // do not emit the events observed by the userscript.
-            if(tries%8===0)saveDraft('periodic');
+            if(tries%8===0&&getCkeditorInstance()?.status==='ready')saveDraft('periodic');
 
             updateInfo();
         }, 1000);
