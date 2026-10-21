@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Message Autosaver (Chrome Desktop)
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.9.1
+// @version      0.9.2
 // @description  Chrome desktop local Wilma compose autosave: subject, body and recipients.
 // @match        https://*.inschool.fi/messages/compose*
 // @run-at       document-start
@@ -648,7 +648,7 @@
     function exportWmt(items){
       const clean=x=>String(x||'').replace(/\r/g,'').replace(/\n/g,' ');
       return '# WilmaTools Templates v1\n\n'+items.map(t=>{
-        const fields=[['id',t.id||''],['nimi',t.title],['kategoria',t.category||'Yleinen'],['vastaanottajat',t.recipientRule||'ei_valintaa'],['aihe',t.subject||''],['viestityyppi',t.messageMode||'group']];
+        const fields=[['id',t.id||''],['nimi',t.title],['kategoria',t.category||'Yleinen'],['vastaanottajat',t.recipientRule||'ei_valintaa'],['aihe',t.subject||''],['viestityyppi',t.messageMode||'group'],['ryhmat',(t.recipientGroups||[]).join('; ')],['henkilot',(t.recipientIndividuals||[]).join('; ')]];
         return '[POHJA]\n'+fields.map(([k,v])=>k+': '+clean(v)).join('\n')+'\n\n'+String(t.body||'').replace(/\r/g,'').replace(/^\[\/POHJA\]$/gm,'[ /POHJA ]')+'\n[/POHJA]';
       }).join('\n\n')+'\n';
     }
@@ -666,7 +666,7 @@
           meta[m[1]]=m[2];
         }
         if(!meta.nimi)throw Error('Pohjan nimi puuttuu');
-        return {id:meta.id||'',title:meta.nimi,category:meta.kategoria||'Yleinen',recipientRule:meta.vastaanottajat||'ei_valintaa',messageMode:meta.viestityyppi==='single'?'single':'group',subject:meta.aihe||'',body:block[1].slice(divider+2).replace(/\n$/,'')};
+        return {id:meta.id||'',title:meta.nimi,category:meta.kategoria||'Yleinen',recipientRule:meta.vastaanottajat||'ei_valintaa',messageMode:meta.viestityyppi==='single'?'single':'group',recipientGroups:(meta.ryhmat||'').split(';').map(x=>x.trim()).filter(Boolean),recipientIndividuals:(meta.henkilot||'').split(';').map(x=>x.trim()).filter(Boolean),subject:meta.aihe||'',body:block[1].slice(divider+2).replace(/\n$/,'')};
       });
     }
     function exportFile(items){
@@ -781,7 +781,7 @@
        }
        const help=label('div','Muuttujat merkitään aaltosulkeilla: {etunimi}, {opiskelijan_nimi}, {opettajan_nimi}, {paivamaara}, {linkki:ohje}. Kirjoita sama muuttuja aiheeseen tai tekstiin. Käytettäessä tuntemattoman muuttujan arvo kysytään. Yhteisviestissä ei täytetä automaattisesti yksittäisen opiskelijan etunimeä.');help.style.cssText='padding:10px;background:#eef5fb;border-radius:7px;white-space:normal;font-size:12px';aside.append(help);
        const role=label('label','Vastaanottajatapa');role.style.cssText='display:block;margin:10px 0';const choice=document.createElement('select');
-       for(const [value,name] of [['ei_valintaa','Valitaan Wilmassa käsin'],['valitut_opiskelijat','Valitut opiskelijat'],['valittujen_huoltajat','Valittujen opiskelijoiden huoltajat'],['valitut_opiskelijat_ja_huoltajat','Opiskelijat ja huoltajat'],['pohjaan_tallennetut','Pohjaan tallennetut vastaanottajat']]){
+       for(const [value,name] of [['ei_valintaa','Valitaan Wilmassa käsin'],['valitut_opiskelijat','Valitut opiskelijat'],['valittujen_huoltajat','Valittujen opiskelijoiden huoltajat'],['valitut_opiskelijat_ja_huoltajat','Opiskelijat ja huoltajat'],['pohjaan_tallennetut','Pohjaan tallennetut vastaanottajat'],['yhdistelma','Ryhmiä ja yksittäisiä henkilöitä']]){
         const option=label('option',name);option.value=value;choice.append(option);
        }
        choice.value=item.recipientRule||'ei_valintaa';role.append(choice);aside.append(role);
