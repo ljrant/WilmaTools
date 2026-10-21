@@ -158,3 +158,7 @@ Luonnosten ja viestipohjien sisältö palautetaan **vain CKEditorin `setData`-ra
 ### Rinnakkainen Viestikirjasto ja editorin täyttö (v0.15.1)
 
 Wilman kirjoituslomake ja Viestikirjasto sijoitetaan vierekkäisiin sarakkeisiin, kun tilaa on riittävästi; kapealla näytöllä kirjasto tulee alle. Yhteinen **Viesti / Viestipohjat / Luonnokset** -välilehtirivi sijoittuu Viestikirjaston yläosaan. Viestikirjasto alustetaan viestin kirjoitussivun yhteyteen eikä kellu Wilman sisältöjen päällä. Viestipohjien ja luonnosten tekstin palautus tapahtuu vain editorin omalla CKEditor 4 `setData()` -rajapinnalla: piilotettua HTML-kenttää tai iframe-elementin sisältöä ei muuteta käsin, jottei Wilman editorin muokattava tila rikkoudu. Toimivuus on vielä testattava Wilman varsinaisessa käyttöliittymässä.
+
+### CKEditorin iframe-korjaus (Viestikirjasto v0.15.3)
+
+Rinnakkaisen asettelun aiemmassa toteutuksessa Wilman viestilomake siirrettiin toiseen DOM-säiliöön. Tämä saattoi irrottaa CKEditorin iframe-dokumentin ja aiheuttaa `getSelection`-virheen sekä estää palautettujen viestien muokkaamisen tai tallentamisen. Uusi asettelu käyttää alkuperäisen lomakkeen vanhempielementin CSS-ruudukkoa eikä siirrä viestilomaketta tai editoria DOM-puussa. Päivityksen jälkeen sivu on ladattava uudelleen, jotta jo rikkoutunut editori alustuu uudelleen.
