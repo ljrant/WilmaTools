@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Message Autosaver (Chrome Desktop)
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.12.5
+// @version      0.12.6
 // @description  Chrome desktop local Wilma compose autosave: subject, body and recipients.
 // @match        https://*.inschool.fi/messages/compose*
 // @run-at       document-start
@@ -278,28 +278,36 @@
     }
 
     function setBodyHtml(html) {
-        const value=String(html||'');
+        const raw=String(html||'');
+        const looksHtml=/<[a-z][\\s\\S]*>/i.test(raw);
+        const value=looksHtml?raw:raw.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\r?\\n/g,'<br>');
         const textarea=$(SEL.bodyTextarea);
         const editor=getCkeditorInstance();
-        const syncTextarea=()=>{
-            if(textarea){textarea.value=value;textarea.dispatchEvent(new Event('input',{bubbles:true}));textarea.dispatchEvent(new Event('change',{bubbles:true}))}
-        };
-        if(editor&&typeof editor.setData==='function'){
-            const put=()=>{
-                try{
-                    if(editor.status!=='ready')return false;
-                    editor.setData(value,{callback:()=>{try{editor.updateElement?.()}catch(e){console.warn('[WilmaTools] Editor sync:',e)}syncTextarea()}});
+        const write=()=>{
+            const active=getCkeditorInstance();
+            if(active&&typeof active.setData==='function'&&active.status==='ready'){
+                try {
+                    active.setData(value,{callback:function(){
+                        try{active.updateElement()}catch(err){console.warn('[WilmaTools] Editor synchronization:',err)}
+                    }});
                     return true;
-                }catch(err){console.warn('[WilmaTools] CKEditor not ready:',err);return false}
-            };
-            if(put())return;
-            let attempts=0;
-            const retry=setInterval(()=>{if(put()||++attempts>=15){clearInterval(retry);if(attempts>=15)console.warn('[WilmaTools] Could not load template into CKEditor')}} ,200);
-            return;
-        }
-        const iframeDoc=getCkeditorIframeDocument();
-        if(iframeDoc?.body){iframeDoc.body.innerHTML=value;iframeDoc.body.dispatchEvent(new Event('input',{bubbles:true}))}
-        syncTextarea();
+                }catch(err){console.warn('[WilmaTools] CKEditor setData failed:',err)}
+            }
+            const doc=getCkeditorIframeDocument();
+            if(doc?.body&&doc.body.isContentEditable){
+                doc.body.innerHTML=value;
+                doc.body.dispatchEvent(new Event('input',{bubbles:true}));
+                return true;
+            }
+            return false;
+        };
+        if(write())return;
+        if(textarea)textarea.value=value;
+        let attempts=0;
+        const timer=setInterval(()=>{
+            if(write()){clearInterval(timer);return}
+            if(++attempts>=40){clearInterval(timer);console.warn('[WilmaTools] Viestitekstin lataaminen CKEditoriin ei onnistunut.')}
+        },250);
     }
 
     function getRecipientButtonSignature(button) {
