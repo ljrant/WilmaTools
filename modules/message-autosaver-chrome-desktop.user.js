@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Message Autosaver (Chrome Desktop)
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.16.7
+// @version      0.16.8
 // @description  Chrome desktop local Wilma compose autosave: subject, body and recipients.
 // @match        https://*.inschool.fi/messages/compose*
 // @run-at       document-start
@@ -825,7 +825,7 @@
       }else document.querySelector('main#main-content')?.prepend(aside);
       let tab=location.hash==='#wt-library'?'drafts':'templates',category='Kaikki',edit=-1,recipientStatus='',exportSelected=new Set(),pendingTemplate=null;
       const navigation=document.createElement('nav');navigation.setAttribute('aria-label','WilmaTools');navigation.id='wt-library-tabs';
-      for(const [key,name] of [['templates','Viestipohjat'],['drafts','Luonnokset']]){
+      for(const [key,name] of [['templates','Viestipohjat'],['drafts','Tallennetut luonnokset']]){
         const control=document.createElement('button');control.type='button';control.textContent=name;control.dataset.tab=key;
         control.onclick=()=>{tab=key;aside.hidden=false;draw()};
         navigation.append(control);
@@ -881,8 +881,9 @@
           picked.textContent=shown.size+' viestipohjaa';
         };
         search.oninput=tree;categoryChoice.onchange=tree;
-        templateChoice.onchange=()=>{if(templateChoice.value==='')return;const item=data[Number(templateChoice.value)];if(item)useTemplate(item)};
-        aside.append(search,categoryChoice,templateChoice,picked);
+        const editSelected=b('Muokkaa valittua',()=>{if(templateChoice.value==='')return;edit=Number(templateChoice.value);editor()});editSelected.disabled=true;
+        templateChoice.onchange=()=>{editSelected.disabled=templateChoice.value==='';if(templateChoice.value==='')return;const item=data[Number(templateChoice.value)];if(item)useTemplate(item)};
+        aside.append(search,categoryChoice,templateChoice,editSelected,picked);
         tree();
         const manage=label('details','');const caption=label('summary','Viestipohjien hallinta');caption.style.cssText='cursor:pointer;margin:12px 0;color:#315c7a;font-weight:600';manage.append(caption);aside.append(manage);
         manage.append(b('Uusi viestipohja',()=>{edit=-1;editor()}));
@@ -911,7 +912,7 @@
        const hint=label('p','Tallenteet säilyvät vain tässä selaimessa.');hint.style.color='#687987';aside.append(hint)
       }
       function editor(){
-       const tabs=aside.querySelector('#wt-message-toolbar');aside.replaceChildren();if(tabs)aside.append(tabs);aside.append(label('h2','Viestipohja'));
+       aside.replaceChildren();aside.append(navigation);refreshNavigation();aside.append(label('h2','Viestipohja'));
        const item=getTemplates()[edit]||pendingTemplate||{title:'',category:'Yleinen',subject:'',body:'',recipientRule:'valitut_opiskelijat',recipients:null};
        const fields={};for(const [key,name,multi]of [['title','Nimi',false],['category','Kategoriat (erota puolipisteellä)',false],['subject','Aihe',false],['body','Viesti',true]]){
         const l=label('label',name);l.style.cssText='display:block;margin:10px 0';const inp=document.createElement(multi?'textarea':'input');if(multi)inp.rows=7;inp.value=key==='category'?templateCats(item).join('; '):item[key]||'';inp.style.cssText='display:block;width:100%;padding:8px;box-sizing:border-box;border:1px solid #bacbd7';l.append(inp);aside.append(l);fields[key]=inp;
