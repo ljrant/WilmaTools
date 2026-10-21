@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Message Autosaver (Chrome Desktop)
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.15.3
+// @version      0.16.0
 // @description  Chrome desktop local Wilma compose autosave: subject, body and recipients.
 // @match        https://*.inschool.fi/messages/compose*
 // @run-at       document-start
@@ -813,10 +813,18 @@
         const style=document.createElement('style');
         style.textContent='.'+scope+'{display:grid!important;grid-template-columns:minmax(0,1.3fr) minmax(310px,1fr);column-gap:12px;align-items:start}.'+scope+' > :not(form):not(#wt-message-library){grid-column:1/-1}.'+scope+' > form{grid-column:1;min-width:0;width:100%}.'+scope+' > #wt-message-library{grid-column:2;grid-row:auto;min-width:0} @media(max-width:850px){.'+scope+'{grid-template-columns:minmax(0,1fr)!important}.'+scope+' > form,.'+scope+' > #wt-message-library{grid-column:1!important}}';
         document.head.append(style);
-        const tabs=document.getElementById('wt-message-toolbar');
-        if(tabs){aside.prepend(tabs);tabs.style.cssText='display:flex;flex-wrap:wrap;gap:4px;align-items:center;border-bottom:1px solid #d7e1e8;margin:-6px -6px 10px;padding:3px 5px;background:transparent;font:12px system-ui';}
+        const duplicate=document.getElementById('wt-message-toolbar');if(duplicate)duplicate.remove();
       }else document.querySelector('main#main-content')?.prepend(aside);
-      let tab=location.hash==='#wt-library-templates'?'templates':'drafts',category='Kaikki',edit=-1,recipientStatus='',exportSelected=new Set(),pendingTemplate=null;
+      let tab=location.hash==='#wt-library'?'drafts':'templates',category='Kaikki',edit=-1,recipientStatus='',exportSelected=new Set(),pendingTemplate=null;
+      const navigation=document.createElement('nav');navigation.setAttribute('aria-label','WilmaTools');navigation.id='wt-library-tabs';
+      for(const [key,name] of [['message','Viesti'],['templates','Viestipohjat'],['drafts','Luonnokset']]){
+        const control=document.createElement('button');control.type='button';control.textContent=name;control.dataset.tab=key;
+        control.onclick=()=>{if(key==='message'){aside.hidden=true;return}tab=key;aside.hidden=false;draw()};
+        navigation.append(control);
+      }
+      navigation.style.cssText='display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid #ccc;padding:0 0 8px;margin-bottom:8px';
+      const refreshNavigation=()=>navigation.querySelectorAll('button').forEach(x=>{x.style.cssText='border:0;background:transparent;padding:6px;color:#245675;cursor:pointer;border-bottom:2px solid '+(x.dataset.tab===tab?'#27648b':'transparent')});
+
       const sent=safeRead('wilmatools.sentTemplateImport.v1',null);
       if(sent&&Number.isFinite(sent.createdAt)&&Date.now()-sent.createdAt<15*60*1000){
         pendingTemplate={title:String(sent.subject||'Vanhasta viestistä').slice(0,120),subject:String(sent.subject||''),body:String(sent.body||''),bodyHtml:String(sent.bodyHtml||''),category:'Yleinen',recipientRule:'ei_valintaa',messageMode:'group',recipients:null};
@@ -828,7 +836,7 @@
       const b=(name,fn)=>{const x=document.createElement('button');x.type='button';x.textContent=name;x.onclick=fn;x.style.cssText='border:1px solid #b9cbd9;background:#eff6fb;border-radius:6px;padding:7px;margin:4px;color:#234968;cursor:pointer;font:inherit';return x};
       const label=(tag,text)=>{const e=document.createElement(tag);e.textContent=text;return e};
       function draw(){
-       const tabs=aside.querySelector('#wt-message-toolbar');aside.replaceChildren();if(tabs)aside.append(tabs);const header=label('h2','Viestikirjasto');header.style.margin='0 0 10px';aside.append(header,b('Sulje',()=>{aside.hidden=true;window.dispatchEvent(new Event('wilmatools:library-closed'))}));
+       aside.replaceChildren();aside.append(navigation);refreshNavigation();const header=label('h2','Viestikirjasto');header.style.margin='0 0 10px';aside.append(header);
        if(tab==='drafts'){
         const drafts=[...listHistory()];
         const latest=loadDraft();
