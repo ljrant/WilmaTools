@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Desktop Sidebar
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.18.1
+// @version      0.18.2
 // @description  Finnish-first WilmaTools sidebar on every Wilma page
 // @match        https://*.inschool.fi/*
 // @grant        none
@@ -153,11 +153,16 @@ function groupMessageLinks(doc){
  return links;
 }
 async function groupMessage(url,type){
+ const match=url.match(/^\/profiles\/classes\/(\d+)\/?$/);
+ if(match&&['students','guardians','both'].includes(type)){
+  const request={createdAt:Date.now(),source:'homeroom',recipientClassId:match[1],recipientType:type,recipientsNames:[]};
+  localStorage.setItem('wilmatools.composeRequest.v1',JSON.stringify(request));
+  location.assign('/messages/compose#wt-library');return;
+ }
  try{
-  const links=groupMessageLinks(await groupDoc(url));
-  const target=links[type]||(type==='group'?links.group:null);
-  if(!target)return info(lang==='fi'?'Wilmasta ei löytynyt linkkiä, joka esivalitsisi tämän ryhmän vastaanottajat. Viestiä ei avattu väärillä vastaanottajilla. Tarvitsen ryhmäsivun viestilinkin HTML-rakenteen.':'No verified preselected-recipient message link was found for this group. Nothing was opened.');
-  location.assign(target);
+  const links=groupMessageLinks(await groupDoc(url)),target=links[type]||(type==='group'?links.group:null);
+  if(target)location.assign(target);
+  else info('Ryhmän viestilinkkiä ei löytynyt. Vastaanottajia ei valittu.');
  }catch(e){info(e.message)}
 }
 function gradingLinks(doc){
