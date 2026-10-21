@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Message Autosaver (Chrome Desktop)
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.13.3
+// @version      0.14.0
 // @description  Chrome desktop local Wilma compose autosave: subject, body and recipients.
 // @match        https://*.inschool.fi/messages/compose*
 // @run-at       document-start
@@ -278,36 +278,42 @@
     }
 
     function setBodyHtml(html) {
-        const raw=String(html||'');
-        const looksHtml=/<[a-z][\\s\\S]*>/i.test(raw);
-        const value=looksHtml?raw:raw.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\r?\\n/g,'<br>');
-        const textarea=$(SEL.bodyTextarea);
+      const source=String(html||'');
+      const formatted=/<[a-z][\s\S]*>/i.test(source)
+        ?source
+        :source.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\r?\n/g,'<br>');
+      const textarea=$(SEL.bodyTextarea);
+      let attempts=0;
+      function write() {
         const editor=getCkeditorInstance();
-        const write=()=>{
-            const active=getCkeditorInstance();
-            if(active&&typeof active.setData==='function'&&active.status==='ready'){
-                try {
-                    active.setData(value,{callback:function(){
-                        try{active.updateElement()}catch(err){console.warn('[WilmaTools] Editor synchronization:',err)}
-                    }});
-                    return true;
-                }catch(err){console.warn('[WilmaTools] CKEditor setData failed:',err)}
-            }
-            const doc=getCkeditorIframeDocument();
-            if(doc?.body&&doc.body.isContentEditable){
-                doc.body.innerHTML=value;
-                doc.body.dispatchEvent(new Event('input',{bubbles:true}));
-                return true;
-            }
-            return false;
-        };
-        if(write())return;
-        if(textarea)textarea.value=value;
-        let attempts=0;
-        const timer=setInterval(()=>{
-            if(write()){clearInterval(timer);return}
-            if(++attempts>=40){clearInterval(timer);console.warn('[WilmaTools] Viestitekstin lataaminen CKEditoriin ei onnistunut.')}
-        },250);
+        // Wilma uses CKEditor 4: setData(value, callback) is the stable API.
+        if(editor&&typeof editor.setData==='function'&&editor.status==='ready'){
+          try{
+            editor.setData(formatted,function(){
+              try{editor.updateElement()}catch(e){console.warn('[WilmaTools] Editor sync',e)}
+            });
+            return true;
+          }catch(err){console.warn('[WilmaTools] setData retry:',err)}
+        }
+        const iframe=getCkeditorIframeDocument();
+        if(iframe?.body){
+          try{
+            iframe.body.innerHTML=formatted;
+            iframe.body.dispatchEvent(new Event('input',{bubbles:true}));
+            if(textarea)textarea.value=formatted;
+            return true;
+          }catch(err){console.warn('[WilmaTools] Editor iframe retry:',err)}
+        }
+        return false;
+      }
+      if(write())return;
+      if(textarea)textarea.value=formatted;
+      const retry=setInterval(()=>{
+        if(write()||++attempts>=40){
+          clearInterval(retry);
+          if(attempts>=40)console.warn('[WilmaTools] CKEditor ei vastaanottanut viestitekstiä');
+        }
+      },250);
     }
 
     function getRecipientButtonSignature(button) {
@@ -819,11 +825,37 @@
         aside.append(heading,select);
         const count=label('p',drafts.length+' tallennetta. Valinta palauttaa otsikon, tekstin ja vastaanottajat.');count.style.cssText='font-size:12px;color:#607080;margin:8px 0';aside.append(count);
        }else{
-        const data=getTemplates(),cats=['Kaikki',...new Set(data.flatMap(templateCats))];
-        const select=document.createElement('select');for(const c of cats){const opt=label('option',c);opt.value=c;select.append(opt)}select.value=cats.includes(category)?category:'Kaikki';select.onchange=()=>{category=select.value;draw()};aside.append(select);
-        aside.append(b('Uusi viestipohja',()=>{edit=-1;editor()}));
-        aside.append(b('Vie kaikki .wmt.txt',()=>exportFile(data)));
-        aside.append(b('Vie valitut ('+exportSelected.size+')',()=>exportFile(data.filter((x,i)=>exportSelected.has(i)))));
+        const data=getTemplates(),cats=['Kaikki',...new Set(data.flatMap(templateCats))].sort((a,b)=>a==='Kaikki'?-1:b==='Kaikki'?1:a.localeCompare(b,'fi'));
+        const search=label('input','');search.type='search';search.placeholder='Hae viestipohjia…';search.setAttribute('aria-label','Hae viestipohjia');search.style.cssText='width:100%;padding:8px;margin:6px 0;border:1px solid #b9cbd9;border-radius:5px';
+        const categoryChoice=document.createElement('select');categoryChoice.style.cssText='width:100%;padding:8px;margin:5px 0;border:1px solid #b9cbd9;border-radius:5px';
+        for(const c of cats){const op=label('option',c);op.value=c;categoryChoice.append(op)}
+        categoryChoice.value=cats.includes(category)?category:'Kaikki';
+        const templateChoice=document.createElement('select');templateChoice.style.cssText='width:100%;padding:8px;margin:5px 0;border:1px solid #b9cbd9;border-radius:5px';
+        const picked=label('div','');picked.style.cssText='font-size:12px;color:#536979;margin:5px 0';
+        const tree=()=>{
+          category=categoryChoice.value;
+          templateChoice.replaceChildren();
+          const first=label('option','Valitse viestipohja…');first.value='';templateChoice.append(first);
+          const q=search.value.trim().toLocaleLowerCase('fi');
+          const groups=category==='Kaikki'?cats.filter(x=>x!=='Kaikki'):[category];
+          const shown=new Set();
+          for(const group of groups){
+            const matches=data.map((t,i)=>({t,i})).filter(({t,i})=>!shown.has(i)&&templateCats(t).includes(group)&&(!q||(t.title+' '+(t.subject||'')+' '+templateCats(t).join(' ')).toLocaleLowerCase('fi').includes(q)));
+            if(!matches.length)continue;
+            const node=document.createElement('optgroup');node.label=group;
+            for(const {t,i} of matches){const op=label('option',t.title);op.value=String(i);node.append(op);shown.add(i)}
+            templateChoice.append(node);
+          }
+          picked.textContent=shown.size+' viestipohjaa';
+        };
+        search.oninput=tree;categoryChoice.onchange=tree;
+        templateChoice.onchange=()=>{if(templateChoice.value==='')return;const item=data[Number(templateChoice.value)];if(item)useTemplate(item)};
+        aside.append(search,categoryChoice,templateChoice,picked);
+        tree();
+        const manage=label('details','');const caption=label('summary','Viestipohjien hallinta');caption.style.cssText='cursor:pointer;margin:12px 0;color:#315c7a;font-weight:600';manage.append(caption);aside.append(manage);
+        manage.append(b('Uusi viestipohja',()=>{edit=-1;editor()}));
+        manage.append(b('Vie kaikki .wmt.txt',()=>exportFile(data)));
+        manage.append(b('Vie valitut ('+exportSelected.size+')',()=>exportFile(data.filter((x,i)=>exportSelected.has(i)))));
         const upload=document.createElement('input');upload.type='file';upload.accept='.txt,text/plain';upload.style.maxWidth='100%';
         upload.onchange=async()=>{const file=upload.files?.[0];if(!file)return;
           try{if(file.size>500000)throw Error('Tiedosto on liian suuri');const incoming=importWmt(await file.text());
@@ -838,8 +870,8 @@
             }
             localStorage.setItem(TEMPLATE_KEY,JSON.stringify(all));exportSelected.clear();alert('Tuotu uusia: '+added+'. Päivitetty: '+replaced+'.');draw();
           }catch(err){alert('Tuonti epäonnistui: '+err.message)}
-        };aside.append(upload);
-        data.forEach((item,i)=>{if(category!=='Kaikki'&&!templateCats(item).includes(category))return;const row=label('div','');row.style.cssText='border-bottom:1px solid #ddd;padding:10px 0';row.append(label('strong',item.title),label('div',templateCats(item).join(', ')));const tick=document.createElement('input');tick.type='checkbox';tick.checked=exportSelected.has(i);tick.onchange=()=>{if(tick.checked)exportSelected.add(i);else exportSelected.delete(i);draw()};row.prepend(tick);row.append(b('Käytä',()=>useTemplate(item)),b('Vie .txt',()=>exportFile([item])),b('Muokkaa',()=>{edit=i;editor()}),b('Poista',()=>{if(confirm('Poistetaanko pohja?')){data.splice(i,1);exportSelected.clear();localStorage.setItem(TEMPLATE_KEY,JSON.stringify(data));draw()}}));aside.append(row)});
+        };manage.append(upload);
+        data.forEach((item,i)=>{if(category!=='Kaikki'&&!templateCats(item).includes(category))return;const row=label('div','');row.style.cssText='border-bottom:1px solid #ddd;padding:10px 0';row.append(label('strong',item.title),label('div',templateCats(item).join(', ')));const tick=document.createElement('input');tick.type='checkbox';tick.checked=exportSelected.has(i);tick.onchange=()=>{if(tick.checked)exportSelected.add(i);else exportSelected.delete(i);draw()};row.prepend(tick);row.append(b('Käytä',()=>useTemplate(item)),b('Vie .txt',()=>exportFile([item])),b('Muokkaa',()=>{edit=i;editor()}),b('Poista',()=>{if(confirm('Poistetaanko pohja?')){data.splice(i,1);exportSelected.clear();localStorage.setItem(TEMPLATE_KEY,JSON.stringify(data));draw()}}));manage.append(row)});
        }
        const names=safeReadSession('wilmatools.recipientReminder.v1',[]);
        if(names.length){const note=label('div','Valitse Wilmassa vastaanottajat: '+names.join(', '));note.style.cssText='padding:9px;background:#fff6da;border:1px solid #e3cd91;border-radius:6px';aside.append(note);aside.append(b('Vastaanottajat tarkistettu',()=>{sessionStorage.removeItem('wilmatools.recipientReminder.v1');draw()}))}
