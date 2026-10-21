@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Message Autosaver (Chrome Desktop)
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.9.3
+// @version      0.9.4
 // @description  Chrome desktop local Wilma compose autosave: subject, body and recipients.
 // @match        https://*.inschool.fi/messages/compose*
 // @run-at       document-start
@@ -727,6 +727,21 @@
       return {selected:selected.filter(x=>visible.includes(normalizeText(x))),missing:[...new Set([...missing,...selected.filter(x=>!visible.includes(normalizeText(x)))])]};
     }
     function getTemplates(){return safeRead(TEMPLATE_KEY,[]).filter(x=>x&&typeof x.title==='string').slice(0,150)}
+    async function selectTemplateGroups(item){
+      const groups=item.recipientGroups||[],missing=[];
+      for(const group of groups){
+        const matches=[...document.querySelectorAll('a.disclosure[href^="#collapse-school-classes-"]')].filter(a=>a.textContent.trim()===group);
+        if(matches.length!==1){missing.push(group);continue}
+        const id=(matches[0].getAttribute('href')||'').match(/^#collapse-school-classes-(\d+)-/);
+        if(!id){missing.push(group);continue}
+        const kind=item.recipientRule==='valittujen_huoltajat'?'guardians':item.recipientRule==='valitut_opiskelijat_ja_huoltajat'?'both':'students';
+        const result=await selectClassRecipients(id[1],kind);
+        if(!result.ok)missing.push(group+' ('+result.missing.join(', ')+')');
+      }
+      const persons=item.recipientIndividuals||[];
+      if(persons.length){const res=await selectRecipientsByNames(persons);missing.push(...res.missing)}
+      return {ok:missing.length===0,missing};
+    }
     function useTemplate(item){
       const vals={paivamaara:new Date().toLocaleDateString('fi-FI')};
       if(item.messageMode==='group'&&/\{(?:etunimi|opiskelijan_nimi|huoltajan_nimi)\}/i.test((item.subject||'')+' '+(item.body||''))){alert('Ryhmäviesti sisältää yksittäisen vastaanottajan muuttujia. Valitse henkilökohtainen viesti tai muokkaa pohjaa.');return}
@@ -734,8 +749,7 @@
         const subject=expandTemplate(item.subject||'',vals),body=expandTemplate(item.body||'',vals);
         applySaved({subject,body},false);
         if(item.recipientRule==='yhdistelma'){
-          const targets=[...(item.recipientGroups||[]),...(item.recipientIndividuals||[])];
-          selectRecipientsByNames(targets).then(result=>{
+          selectTemplateGroups(item).then(result=>{
             const missing=result.missing;
             window.dispatchEvent(new CustomEvent('wilmatools:recipients-verified',{detail:{verified:missing.length===0&&targets.length>0}}));
             if(missing.length)alert('Valitse Wilmassa vielä: '+missing.join(', '));
