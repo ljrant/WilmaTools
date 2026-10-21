@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Message Autosaver (Chrome Desktop)
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.12.6
+// @version      0.13.0
 // @description  Chrome desktop local Wilma compose autosave: subject, body and recipients.
 // @match        https://*.inschool.fi/messages/compose*
 // @run-at       document-start
@@ -754,8 +754,7 @@
         const result=await selectClassRecipients(id[1],kind);
         if(!result.ok)missing.push(group+' ('+result.missing.join(', ')+')');
       }
-      const persons=item.recipientIndividuals||[];
-      if(persons.length){const res=await selectRecipientsByNames(persons);missing.push(...res.missing)}
+      // Individual recipients are selected manually in Wilma.
       return {ok:missing.length===0,missing};
     }
     function applyMessageOptions(options){
@@ -775,15 +774,13 @@
         const subject=expandTemplate(item.subject||'',vals),body=expandTemplate(item.body||'',vals);
         applySaved({subject,bodyHtml:item.bodyHtml?expandTemplate(sanitizeTemplateHtml(item.bodyHtml),vals):body},false);
         applyMessageOptions(item.options);
-        if(item.recipientRule==='yhdistelma'){
+        if(item.recipientRule==='yhdistelma'&&(item.recipientGroups||[]).length){
           selectTemplateGroups(item).then(result=>{
             const missing=result.missing;
             window.dispatchEvent(new CustomEvent('wilmatools:recipients-verified',{detail:{verified:missing.length===0&&((item.recipientGroups||[]).length+(item.recipientIndividuals||[]).length)>0}}));
-            if(missing.length)alert('Valitse Wilmassa vielä: '+missing.join(', '));
+            if(missing.length)console.warn('[WilmaTools] Ryhmän vastaanottajavalinta jäi kesken:',missing);
           }).catch(()=>alert('Tarkista ryhmä- ja henkilövastaanottajat Wilmassa.'));
-        }else if(item.recipients)restoreRecipients(item.recipients).then(ok=>{
-          window.dispatchEvent(new CustomEvent('wilmatools:recipients-verified',{detail:{verified:ok}}));
-        });
+        }
       }catch(err){if(err.message!=='Käyttö peruttu')alert(err.message)}
     }
     function applySaved(item,withRecipients){
@@ -794,9 +791,7 @@
         const params=new URLSearchParams();for(const pair of item.recipientQuery){const [k,v]=pair.split('=');if(['r_class','r_classguardian'].includes(k)&&/^\d+$/.test(v||''))params.set(k,v)}
         if([...params].length){localStorage.setItem('wilmatools.draftRestore.v1',JSON.stringify({subject:item.subject||'',bodyHtml:item.bodyHtml||'',createdAt:Date.now()}));location.assign('/messages/compose?'+params.toString());return}
       }
-      if(withRecipients&&item.recipients)restoreRecipients(item.recipients).then(ok=>{
-       window.dispatchEvent(new CustomEvent('wilmatools:recipients-verified',{detail:{verified:ok}}));
-      });
+      // Individual recipient restoration is deliberately disabled. Wilma remains authoritative.
     }
     function library(){
       const existing=document.getElementById('wt-message-library');if(existing){existing.hidden=false;existing.scrollIntoView({block:'nearest'});return}
@@ -816,8 +811,7 @@
       const b=(name,fn)=>{const x=document.createElement('button');x.type='button';x.textContent=name;x.onclick=fn;x.style.cssText='border:1px solid #b9cbd9;background:#eff6fb;border-radius:6px;padding:7px;margin:4px;color:#234968;cursor:pointer;font:inherit';return x};
       const label=(tag,text)=>{const e=document.createElement(tag);e.textContent=text;return e};
       function draw(){
-       aside.replaceChildren();const header=label('h2','Viestikirjasto');header.style.margin='0 0 10px';aside.append(header,b('Sulje',()=>aside.hidden=true));
-       aside.append(b('Luonnokset',()=>{tab='drafts';draw()}),b('Viestipohjat',()=>{tab='templates';draw()}));
+       aside.replaceChildren();const header=label('h2','Viestikirjasto');header.style.margin='0 0 10px';aside.append(header,b('Sulje',()=>{aside.hidden=true;window.dispatchEvent(new Event('wilmatools:library-closed'))}));
        if(tab==='drafts'){
         const current=loadDraft();if(current)aside.append(b('Viimeisin automaattitallenne',()=>{if(confirm('Korvataanko viestin sisältö tallenteella?'))applySaved(current,true)}));
         for(const item of listHistory()){
@@ -905,9 +899,7 @@
         }
         const task=request.recipientClassId
           ?selectClassRecipients(request.recipientClassId,request.recipientType)
-          :Array.isArray(request.recipientsNames)&&request.recipientsNames.length
-            ?selectRecipientsByNames(request.recipientsNames).then(r=>({ok:r.missing.length===0,missing:r.missing}))
-            :Promise.resolve({ok:true,missing:[]});
+          :Promise.resolve({ok:true,missing:[]});
         task.then(result=>{
           if(!result.ok){
             library();const pane=document.getElementById('wt-message-library');
@@ -915,7 +907,7 @@
           }
         }).catch(err=>console.warn('[WilmaTools] Recipient selection failed:',err));
       }
-      window.addEventListener('wilmatools:show-library',event=>{library();window.dispatchEvent(new CustomEvent('wilmatools:library-tab',{detail:event.detail?.section}))});
+      window.addEventListener('wilmatools:show-library',event=>{if(event.detail?.section==='message'){const lib=document.getElementById('wt-message-library');if(lib)lib.hidden=true;return}library();window.dispatchEvent(new CustomEvent('wilmatools:library-tab',{detail:event.detail?.section}))});
       window.addEventListener('wilmatools:save-compose-template',()=>{library();window.dispatchEvent(new Event('wilmatools:compose-to-template'))});
       window.addEventListener('wilmatools:open-library',()=>{const lib=document.getElementById('wt-message-library');if(lib)lib.hidden=false;else library()});
     }
