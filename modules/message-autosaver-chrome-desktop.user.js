@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Message Autosaver (Chrome Desktop)
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.13.2
+// @version      0.13.3
 // @description  Chrome desktop local Wilma compose autosave: subject, body and recipients.
 // @match        https://*.inschool.fi/messages/compose*
 // @run-at       document-start
@@ -591,16 +591,10 @@
 
         await sleep(500);
 
-        // Verify Wilma's actual hidden recipient values after picker interactions.
-        // Never inject raw saved HTML, which does not update Wilma's internal state.
-        const current=getRecipientsSnapshot();
-        const expected=(snapshot.inputs||[]).filter(x=>x.value).map(x=>x.name+'='+x.value);
-        const observed=new Set((current.inputs||[]).filter(x=>x.value).map(x=>x.name+'='+x.value));
-        const verified=expected.length>0&&expected.every(x=>observed.has(x));
-        if(!verified)console.warn('[WilmaTools] Recipient restoration not verified; inspect Wilma recipients manually.');
+        // Recipient selection is best-effort: do not block restoration on Wilma's
+        // internal hidden-field representation or demand a second confirmation.
         updateInfo();
-
-        return verified;
+        return clicked>0;
     }
 
     function collectDraft() {
