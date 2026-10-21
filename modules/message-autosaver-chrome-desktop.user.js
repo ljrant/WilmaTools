@@ -713,7 +713,14 @@
       try{
         const subject=expandTemplate(item.subject||'',vals),body=expandTemplate(item.body||'',vals);
         applySaved({subject,body},false);
-        if(item.recipients)restoreRecipients(item.recipients).then(ok=>{
+        if(item.recipientRule==='yhdistelma'){
+          const targets=[...(item.recipientGroups||[]),...(item.recipientIndividuals||[])];
+          selectRecipientsByNames(targets).then(result=>{
+            const missing=result.missing;
+            window.dispatchEvent(new CustomEvent('wilmatools:recipients-verified',{detail:{verified:missing.length===0&&targets.length>0}}));
+            if(missing.length)alert('Valitse Wilmassa vielä: '+missing.join(', '));
+          }).catch(()=>alert('Tarkista ryhmä- ja henkilövastaanottajat Wilmassa.'));
+        }else if(item.recipients)restoreRecipients(item.recipients).then(ok=>{
           window.dispatchEvent(new CustomEvent('wilmatools:recipients-verified',{detail:{verified:ok}}));
         });
       }catch(err){if(err.message!=='Käyttö peruttu')alert(err.message)}
