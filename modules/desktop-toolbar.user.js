@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Desktop Sidebar
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.18.0
+// @version      0.18.1
 // @description  Finnish-first WilmaTools sidebar on every Wilma page
 // @match        https://*.inschool.fi/*
 // @grant        none
@@ -125,18 +125,28 @@ function groupMessageLinks(doc){
  const links={students:null,guardians:null,both:null,group:null};
  for(const a of doc.querySelectorAll('a[href]')){
   const path=safePath(a);if(!path||!path.startsWith('/messages/compose'))continue;
-  const labelText=txt(a.textContent).toLowerCase();
-  if(/huoltaj|guardian|parent/.test(labelText)&&/opiskelij|student/.test(labelText))links.both=path;
-  else if(/huoltaj|guardian|parent/.test(labelText))links.guardians=path;
-  else if(/opiskelij|student/.test(labelText))links.students=path;
-  else if(/ryhm|group|viesti|message/.test(labelText))links.group=path;
+  const name=txt(a.textContent).toLocaleLowerCase('fi');
+  // A singular student/guardian link must never stand for an entire class.
+  if(/opiskelijalle|oppilaalle|huoltajalle|student\b|guardian\b|parent\b/.test(name)&&!/opiskelijoille|oppilaille|huoltajille|students|guardians|parents/.test(name))continue;
+  const student=/opiskelijoille|oppilaille|students\b/i.test(name);
+  const guardian=/huoltajille|guardians\b|parents\b/i.test(name);
+  if(student&&guardian)links.both=path;
+  else if(student)links.students=path;
+  else if(guardian)links.guardians=path;
+  else if(/viesti ryhmälle|message group/i.test(name))links.group=path;
+ }
+ // If Wilma exposes the same URL for different actions, do not guess.
+ const types=['students','guardians','both'];
+ for(const type of types){
+  if(!links[type])continue;
+  if(types.some(other=>other!==type&&links[other]===links[type]))links[type]=null;
  }
  return links;
 }
 async function groupMessage(url,type){
  try{
   const links=groupMessageLinks(await groupDoc(url));
-  const target=links[type]||(type==='group'?(links.students||links.group):null);
+  const target=links[type]||(type==='group'?links.group:null);
   if(!target)return info(lang==='fi'?'Wilmasta ei löytynyt linkkiä, joka esivalitsisi tämän ryhmän vastaanottajat. Viestiä ei avattu väärillä vastaanottajilla. Tarvitsen ryhmäsivun viestilinkin HTML-rakenteen.':'No verified preselected-recipient message link was found for this group. Nothing was opened.');
   location.assign(target);
  }catch(e){info(e.message)}
