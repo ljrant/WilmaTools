@@ -10,9 +10,9 @@ Asenna Tampermonkey ja haluamasi skriptit. Tietokoneella sivupaneeli ja varsinai
 
 | Työkalu | Versio | Asennus |
 | --- | --- | --- |
-| WilmaTools-sivupaneeli (tietokone) | 0.20.0 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/desktop-toolbar.user.js) |
-| Ryhmänohjaajan opintoseuranta | 0.20.0 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/WilmaTools.user.js) |
-| Viestiluonnosten tallennus – Chrome tietokoneella | 0.11.0 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-chrome-desktop.user.js) |
+| WilmaTools-sivupaneeli (tietokone) | 0.20.2 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/desktop-toolbar.user.js) |
+| Ryhmänohjaajan opintoseuranta | 0.20.2 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/WilmaTools.user.js) |
+| Viestiluonnosten tallennus – Chrome tietokoneella | 0.12.4 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-chrome-desktop.user.js) |
 | Viestiluonnosten tallennus – Firefox Androidissa (kokeellinen) | 0.6.0 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-firefox-android.user.js) |
 
 Skriptit toimivat erikseen Tampermonkeyn kautta ja niitä voi ottaa käyttöön tai poistaa käytöstä itsenäisesti. Pelkkä sivupaneeli ei kerää suorituksia eikä tallenna viestejä. Skriptien osoiterajaus on `https://*.inschool.fi`.
@@ -72,17 +72,17 @@ Lähdekoodi: https://github.com/ljrant/WilmaTools
 
 **Huomautus:** Kaikkia toimintoja ei ole vielä vahvistettu eri koulujen Wilma-käyttöliittymissä. Testaa etenkin ryhmäsivun linkit, opiskelijamäärä ja vastaanottajavalinta ennen varsinaista käyttöä.
 
-## Arviointinäkymän integrointi (v0.20.0)
+## Arviointinäkymän integrointi (v0.20.2)
 
 Ryhmäsivulle lisätään **Arviointinäkymä** Wilman omaan välilehtiriviin mahdollisuuksien mukaan **Tuen tilastot** -välilehden jälkeen. Arviointitaulukko näkyy samalla sivulla; muihin välilehtiin siirtyminen palauttaa Wilman alkuperäisen sisällön. Sivupaneelista poistettiin erillinen arviointipikavalinta. Opiskelijoiden suoritussivujen haussa ei ole keinotekoista odotusta: käytössä on enintään viisi rinnakkaista pyyntöä. Käyttöliittymäintegraatio on testattava koulun Wilma-versiossa.
 
 Arviointinäkymän versiossa **0.18.3** näkymä korvaa ryhmäsivun välilehtialueen muun sisällön sen sijaan, että se lisättäisiin sivun loppuun. Wilman alkuperäinen välilehtisisältö palautetaan muihin välilehtiin siirryttäessä. Käyttöliittymää on testattava oikeassa Wilma-ympäristössä.
 
-**v0.20.0:** Arviointinäkymä-välilehti lisätään myös ryhmän alisivuille, jos niillä näkyy sama Wilman välilehtipalkki. Alisivun välilehtilinkki avaa saman ryhmän pääsivun arviointinäkymän automaattisesti.
+**v0.20.2:** Arviointinäkymä-välilehti lisätään myös ryhmän alisivuille, jos niillä näkyy sama Wilman välilehtipalkki. Alisivun välilehtilinkki avaa saman ryhmän pääsivun arviointinäkymän automaattisesti.
 
-**v0.20.0:** Opiskelijoiden suoritukset ladataan taustalla enintään viidellä rinnakkaisella pyynnöllä. Arviointimatriisi näytetään yhdellä kertaa valmistumisen jälkeen. Erillisiä keräys-, pysäytys- ja päivityspainikkeita tai lataus- ja virhelaskureita ei näytetä. Puuttuvia tietoja ei kuitenkaan korvata oletusarvoilla.
+**v0.20.2:** Opiskelijoiden suoritukset ladataan taustalla enintään viidellä rinnakkaisella pyynnöllä. Arviointimatriisi näytetään yhdellä kertaa valmistumisen jälkeen. Erillisiä keräys-, pysäytys- ja päivityspainikkeita tai lataus- ja virhelaskureita ei näytetä. Puuttuvia tietoja ei kuitenkaan korvata oletusarvoilla.
 
-**v0.20.0:** Ryhmäsivun välilehtirivillä ovat erilliset **Arviointinäkymä** ja **Huomiot**. Arviointinäkymän sisäiset päällekkäiset navigointi- ja keräyspainikkeet on poistettu. Matriisin **Opiskelija**-otsaketta painamalla voi järjestää opiskelijat aakkosittain nousevaan tai laskevaan järjestykseen. Lukuvuosi- ja muut suodattimet sekä CSV-vienti säilyvät.
+**v0.20.2:** Ryhmäsivun välilehtirivillä ovat erilliset **Arviointinäkymä** ja **Huomiot**. Arviointinäkymän sisäiset päällekkäiset navigointi- ja keräyspainikkeet on poistettu. Matriisin **Opiskelija**-otsaketta painamalla voi järjestää opiskelijat aakkosittain nousevaan tai laskevaan järjestykseen. Lukuvuosi- ja muut suodattimet sekä CSV-vienti säilyvät.
 
 **Sivupaneeli v0.17.2:** WilmaTools-valikon avauspainike sijoitetaan Wilman tummansinisen otsakealueen oikeaan reunaan, mahdollisuuksien mukaan käyttäjä- ja koulutietojen sekä **Lähetä tapahtumakutsuja** -linkin alapuolelle. Painike pysyy paikallaan sivua vieritettäessä. Varsinainen työkalupaneeli avautuu edelleen painikkeesta.
 
@@ -108,24 +108,33 @@ Viestipohjan vastaanottajatavaksi voi valita **Ryhmiä ja yksittäisiä henkilö
 
 **Sivupaneeli v0.18.1:** Etusivun Viesti opiskelijoille / huoltajille / molemmille -toiminto hyväksyy vain yksiselitteisen ryhmäkohtaisen Wilman viestilinkin. Opiskelijarivin yksittäisen henkilön viestilinkkiä ei enää käytetä ryhmän sijasta. Ellei oikeaa ryhmälinkkiä löydy, toiminto näyttää ilmoituksen eikä avaa väärille vastaanottajille osoitettua viestiä. Ryhmäkohtaisten vastaanottajalinkkien tunnistus vaatii Wilman oikean HTML-rakenteen varmistamisen.
 
-**Vastaanottajavalinta (sivupaneeli v0.20.0, viestimoottori v0.11.0):** Wilman luokan vastaanottajapaneelista tunnistettiin opiskelija- ja huoltajaryhmien `button.recipient-block`-elementit. Etusivun ryhmäkohtaiset opiskelijoille, huoltajille ja molemmille tarkoitetut viestitoiminnot siirtävät luokan tunnisteen viestimoottorille, joka avaa vastaavan paneelin ja käyttää Wilman omia painikkeita. Valmiiksi aktiivisia (`aria-pressed=true`) vastaanottajia ei napsauteta toistamiseen. Yhdistelmäviestipohjissa luokan ryhmävalinta käyttää samaa mekanismia, mutta yksittäisten opettajien nimihaku on vielä kokeellinen. Vastaanottajavalinnat tulee vahvistaa Wilmassa ennen viestin lähettämistä.
+**Vastaanottajavalinta (sivupaneeli v0.20.2, viestimoottori v0.12.4):** Wilman luokan vastaanottajapaneelista tunnistettiin opiskelija- ja huoltajaryhmien `button.recipient-block`-elementit. Etusivun ryhmäkohtaiset opiskelijoille, huoltajille ja molemmille tarkoitetut viestitoiminnot siirtävät luokan tunnisteen viestimoottorille, joka avaa vastaavan paneelin ja käyttää Wilman omia painikkeita. Valmiiksi aktiivisia (`aria-pressed=true`) vastaanottajia ei napsauteta toistamiseen. Yhdistelmäviestipohjissa luokan ryhmävalinta käyttää samaa mekanismia, mutta yksittäisten opettajien nimihaku on vielä kokeellinen. Vastaanottajavalinnat tulee vahvistaa Wilmassa ennen viestin lähettämistä.
 
-### Viestipohjan lisäasetukset ja ajastus (v0.11.0)
+### Viestipohjan lisäasetukset ja ajastus (v0.12.4)
 
 Viestipohjan muokkausnäkymässä voi määrittää Wilman valinnat **vastaanottajat näkevät toistensa nimet**, **vastaanottajat näkevät toistensa vastaukset**, **lähetä myös tekstiviestinä**, **lähetä myös sähköpostina** ja **ajasta lähetys**. Jokaisella on vaihtoehdot *Säilytä Wilman oletus*, *Kyllä* ja *Ei*. Ajastukseen voi antaa lisäksi päivän ja ajan Wilman kenttien hyväksymässä muodossa. Tekstiformaatissa vastaavat kentät ovat `nayta_vastaanottajien_nimet`, `nayta_vastaukset`, `tekstiviesti`, `sahkoposti`, `ajastus`, `lahetyspaiva` ja `lahetysaika`. Tyhjä arvo jättää Wilman oletuksen ennalleen, `true` valitsee ja `false` poistaa valinnan. Käyttöliittymässä pois käytöstä olevaan kenttään ei kosketa. Ajastuksen oikeellisuus ja mahdolliset sähköposti-/tekstiviestipalvelun asetukset tulee tarkistaa Wilmassa ennen lähetystä.
 
-## Käyttöliittymän sijoittelu (sivupaneeli v0.20.0, viestikirjasto v0.11.0)
+## Käyttöliittymän sijoittelu (sivupaneeli v0.20.2, viestikirjasto v0.12.4)
 
 Aiempi koko sivun päälle avautuva WilmaTools-sivupaneeli on korvattu matalalla, vaakasuuntaisella alareunan työkalurivillä. Riviltä pääsee viestin kirjoittamiseen, viestipohjiin ja luonnoksiin. Wilman viestin kirjoitussivulla **Viestikirjasto** sijaitsee nyt varsinaisessa sivusisällössä kirjoituslomakkeen yhteydessä, ei kiinteänä oikean reunan peittävänä paneelina. Kirjaston luonnokset ja viestipohjat sekä niiden tuonti, vienti ja muokkaus ovat muuten edelleen käytettävissä. Sijoittelu tulee tarkistaa Wilman omassa sivuasettelussa.
 
-## Lähetetystä viestistä viestipohjaksi (v0.20.0 + v0.11.0)
+## Lähetetystä viestistä viestipohjaksi (v0.20.2 + v0.12.4)
 
 Wilman avatun viestin sivulle lisätään **Tallenna viestipohjaksi** -painike, kun viestin sisältö löytyy sivun `iframe#message-wrapper`-kehyksen `div.ckeditor`-elementistä. Painike siirtää luettavan viestitekstin ja sivun otsikosta päätellyn aiheen Wilman kirjoitussivun Viestikirjaston muokkausnäkymään. Varmista aihe, tarkista ja poista mahdolliset henkilötiedot, määritä kategoria ja muuttujat sekä tallenna pohja itse. Alkuperäisiä vastaanottajia ei tuoda pohjaan. Alkuperäisen viestin tekstimuotoilut eivät välttämättä säily, sillä kopioidaan viestin luettava teksti. Käyttö vaatii sekä työkalurivimoduulin että Chrome-viestikirjaston asennuksen.
 
-### Viestin toimintovalikon WilmaTools-painike (v0.20.0)
+### Viestin toimintovalikon WilmaTools-painike (v0.20.2)
 
 Avatun Wilma-viestin näkymässä WilmaToolsin toiminnot ovat omassa pienessä **WilmaTools ▾** -pudotusvalikossa viestin toimintopainikkeiden vieressä silloin, kun Wilman oma toimintovalikko löytyy. Valikko sisältää **Tallenna viestipohjaksi**, **Viestipohjat**, **Luonnokset** ja **Viestikirjasto**. Jos Wilman toimintopainikkeita ei tunnisteta, painike näytetään viestikehyksen yläpuolella. Wilman omia toimintovalintoja ei muuteta. Erillinen suuri kelluva sivupaneeli ei palaudu.
 
-## Yhteinen viestisivujen WilmaTools-rivi (v0.20.0 + v0.11.0)
+## Yhteinen viestisivujen WilmaTools-rivi (v0.20.2 + v0.12.4)
 
 DOM-raporttien perusteella sekä viestin kirjoitusnäkymässä että yksittäisen viestin näkymässä on `main#main-content`. Molemmissa näkyy nyt sama huomaamaton WilmaTools-työkalurivi tämän elementin alussa. Aiempi erillinen viestikohtainen pudotusvalikko ja näiden sivujen alareunan yleisrivi poistuvat näkyvistä. Kirjoitusnäkymän **Viestipohjat**, **Luonnokset** ja **Tallenna nykyinen pohjaksi** käyttävät upotettua kirjastoa. Yksittäisen viestin näkymässä **Tallenna viestipohjaksi** poimii viestikehyksen tekstin ja avaa muokattavan pohjan kirjoitussivulla; muut kirjastolinkit vievät samaan kirjoitussivun kirjastoon. Lähetystä ei automatisoida. Lopullinen sijoittelu tulee testata Wilman oikeassa käyttöliittymässä.
+
+## Viestikirjasto ja vastaanottajaluonnokset (v0.20.2 + v0.12.4)
+
+- Etusivun ryhmäviestien opiskelija-/huoltajavastaanottajat avataan Wilman alkuperäisillä `r_class`- ja `r_classguardian`-parametreilla.
+- Luonnoksessa tallennetaan luokan URL-pohjainen vastaanottajavalinta, jos se on saatavilla, ja palautuksessa avataan Wilman oma vastaanottajilla esitäytetty kirjoitusosoite. Henkilökohtaiset vastaanottajat voivat edelleen vaatia käsin tarkistamista.
+- Viestikirjasto sijoitetaan kirjoituslomakkeen oikealle puolelle joustavana rinnakkaisena laatikkona; kapealla ikkunalla laatikot pinoutuvat.
+- Viestipohjalla voi olla useita kategorioita puolipisteellä erotettuina, ja luokkasuodatus löytää pohjan jokaisesta sen kategoriasta.
+- `.wmt.txt` sisältää valinnaisen URL-koodatun `sisalto_html`-kentän muotoilun säilyttämistä varten. Viestipohjan sisältöä voi muokata visuaalisesti muotoiltuna. Vanhojen pohjien tuonti säilyy, ja myös alaviivan sisältävät asetuskentät parsitaan.
+- Lähetetyn viestin pohjaksi tallennus siirtää myös muotoillun viestitekstin. Tarkista henkilökohtaiset tiedot ennen pohjan tallentamista ja jakamista.
