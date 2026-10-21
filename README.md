@@ -138,3 +138,7 @@ DOM-raporttien perusteella sekä viestin kirjoitusnäkymässä että yksittäise
 - Viestipohjalla voi olla useita kategorioita puolipisteellä erotettuina, ja luokkasuodatus löytää pohjan jokaisesta sen kategoriasta.
 - `.wmt.txt` sisältää valinnaisen URL-koodatun `sisalto_html`-kentän muotoilun säilyttämistä varten. Viestipohjan sisältöä voi muokata visuaalisesti muotoiltuna. Vanhojen pohjien tuonti säilyy, ja myös alaviivan sisältävät asetuskentät parsitaan.
 - Lähetetyn viestin pohjaksi tallennus siirtää myös muotoillun viestitekstin. Tarkista henkilökohtaiset tiedot ennen pohjan tallentamista ja jakamista.
+
+## Viestien välilehdet (työkalurivi v0.21.0 ja Viestikirjasto v0.13.1)
+
+Wilman viestisivun yläreunassa on yhteinen välilehtivalikko **Viesti**, **Viestipohjat** ja **Luonnokset**. Kirjoitussivulla välilehdet avaavat oikeanpuoleisen Viestikirjaston vastaavan osion; kirjaston omat päällekkäiset luonnos- ja viestipohjapainikkeet poistettiin. Viestikirjasto voidaan sulkea ilman viestin lähettämistä. Yksittäisten vastaanottajien automaattinen palautus ja siihen liittyvä vahvistusilmoitus on poistettu käytöstä. Luokan vastaanottajat valitaan edelleen Wilman natiivien ryhmäparametrien kautta, kun tieto on saatavilla. Yksittäiset vastaanottajat käsitellään Wilmassa käsin.
