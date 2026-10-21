@@ -11,8 +11,8 @@ Asenna Tampermonkey ja haluamasi skriptit. Tietokoneella sivupaneeli ja varsinai
 | Työkalu | Versio | Asennus |
 | --- | --- | --- |
 | WilmaTools-sivupaneeli (tietokone) | 0.18.0 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/desktop-toolbar.user.js) |
-| Ryhmänohjaajan opintoseuranta | 0.19.1 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/WilmaTools.user.js) |
-| Viestiluonnosten tallennus – Chrome tietokoneella | 0.8.0 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-chrome-desktop.user.js) |
+| Ryhmänohjaajan opintoseuranta | 0.19.2 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/WilmaTools.user.js) |
+| Viestiluonnosten tallennus – Chrome tietokoneella | 0.9.0 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-chrome-desktop.user.js) |
 | Viestiluonnosten tallennus – Firefox Androidissa (kokeellinen) | 0.6.0 | [Asenna](https://raw.githubusercontent.com/ljrant/WilmaTools/main/modules/message-autosaver-firefox-android.user.js) |
 
 Skriptit toimivat erikseen Tampermonkeyn kautta ja niitä voi ottaa käyttöön tai poistaa käytöstä itsenäisesti. Pelkkä sivupaneeli ei kerää suorituksia eikä tallenna viestejä. Skriptien osoiterajaus on `https://*.inschool.fi`.
@@ -86,10 +86,18 @@ Arviointinäkymän versiossa **0.18.3** näkymä korvaa ryhmäsivun välilehtial
 
 **Sivupaneeli v0.17.2:** WilmaTools-valikon avauspainike sijoitetaan Wilman tummansinisen otsakealueen oikeaan reunaan, mahdollisuuksien mukaan käyttäjä- ja koulutietojen sekä **Lähetä tapahtumakutsuja** -linkin alapuolelle. Painike pysyy paikallaan sivua vieritettäessä. Varsinainen työkalupaneeli avautuu edelleen painikkeesta.
 
-## Viestikirjasto – Chrome v0.8.0
+## Viestikirjasto – Chrome v0.9.0
 
 Wilman viestin kirjoitussivulla näkyvä **Viestikirjasto** avaa luonnoshistorian ja viestipohjat sisältävän sivupalkin. Tallennin toimii hiljaisesti: ei automaattisia palautuskyselyitä eikä näkyviä tallennusilmoituksia. Luonnoksia tallennetaan selaimen paikalliseen muistiin ja enintään 35 tuoretta versiota säilytetään; lyhyen ajan sisällä tapahtuneita muutoksia yhdistetään.
 
 **Viestipohjat** tukevat nimeä, vapaavalintaista kategoriaa, aihetta, sisältöä ja valinnaista vastaanottajien tilannekuvaa. Palautus yrittää käyttää Wilman omaa vastaanottajavalitsinta ja tarkistaa piilotettujen vastaanottajakenttien vastaavuuden. Vastaanottajien oikeellisuutta ei voida taata: tarkista ne Wilmassa aina ennen lähettämistä. Tallennettua HTML:ää ei sijoiteta suoraan vastaanottajakenttiin.
 
 **Huomiot**-välilehden valmistellut viestit siirtyvät samaan viestikirjastoon. Valitut opiskelijat näytetään tarkistuslistana, mutta heitä ei aseteta automaattisesti viestin vastaanottajiksi. Tallenteet ja viestipohjat ovat tämän Wilma-palvelimen selaimen salaamattomassa localStorage-muistissa, eivät palvelinvarmistettuja Wilma-luonnoksia.
+
+## Jaettava viestipohjaformaatti – WMT TXT v1
+
+Chrome-viestikirjaston **Viestipohjat**-välilehdeltä voi tuoda UTF-8-muotoisen `.wmt.txt`-tiedoston sekä viedä kaikki tai erikseen valitut viestipohjat. Tiedoston tunniste on `# WilmaTools Templates v1`. Kukin pohja alkaa rivillä `[POHJA]`, sisältää otsaketiedot `id`, `nimi`, `kategoria`, `vastaanottajat` ja `aihe`, ja otsakkeiden jälkeisen tyhjän rivin jälkeen varsinaisen viestitekstin; sulkumerkki on `[/POHJA]` omalla rivillään. Viestissä voi käyttää `{paivamaara}`-muuttujaa ja muita `{muuttuja}`-merkintöjä, jotka käyttäjä täyttää pohjaa käytettäessä. Merkintöjen `[/POHJA]` ja `[POHJA]` käyttöä kirjaimellisesti viestitekstin yksittäisenä rivinä tulee välttää.
+
+Vientitiedostoon sisällytetään **vain viestipohjat**, ei automaattitallennettuja luonnoksia tai niiden vastaanottajien henkilökohtaisia tilannekuvia. Viestitekstissä voi silti olla henkilötietoja: tarkista vietävät pohjat ennen jakamista.
+
+**Huomiot**-välilehdeltä viestimoottori siirtää valitut opiskelijat sekä viestin aiheen ja tekstin kirjoituslomakkeeseen, yrittää valita opiskelijat Wilman vastaanottajavalitsimesta täsmäävien nimien perusteella ja ilmoittaa kirjastossa, jos joitakin valintoja ei voitu vahvistaa. WilmaToolsin mukana siirtyvät myös opiskelijoiden tunnisteet tulevaa tarkempaa valintaa varten. **Nykyinen vastaanottajien automaattivalinta perustuu nimeen eikä sitä ole vahvistettu Wilman eri käyttöliittymissä.** Tarkista aina vastaanottajat ennen viestin lähettämistä; ohjelma ei lähetä viestiä automaattisesti.
