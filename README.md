@@ -142,3 +142,7 @@ DOM-raporttien perusteella sekä viestin kirjoitusnäkymässä että yksittäise
 ## Viestien välilehdet (työkalurivi v0.21.0 ja Viestikirjasto v0.13.1)
 
 Wilman viestisivun yläreunassa on yhteinen välilehtivalikko **Viesti**, **Viestipohjat** ja **Luonnokset**. Kirjoitussivulla välilehdet avaavat oikeanpuoleisen Viestikirjaston vastaavan osion; kirjaston omat päällekkäiset luonnos- ja viestipohjapainikkeet poistettiin. Viestikirjasto voidaan sulkea ilman viestin lähettämistä. Yksittäisten vastaanottajien automaattinen palautus ja siihen liittyvä vahvistusilmoitus on poistettu käytöstä. Luokan vastaanottajat valitaan edelleen Wilman natiivien ryhmäparametrien kautta, kun tieto on saatavilla. Yksittäiset vastaanottajat käsitellään Wilmassa käsin.
+
+### Luonnosten tiivis valinta ja vastaanottajien palautus (Viestikirjasto v0.13.3)
+
+Luonnokset-välilehdessä on yksi valintaluettelo, josta valittu automaattitallenne tai historialuonnos avataan suoraan viestieditoriin. Otsikko, muotoiltu viestiteksti ja vastaanottajat pyritään palauttamaan oletuksena. Vastaanottajien palautus ei edellytä erillistä hyväksyntää eikä piilotettujen Wilma-kenttien täsmävertailun onnistumista. Kokonaisten luokkien vastaanottajat palautetaan ensisijaisesti Wilman natiivien URL-parametrien avulla. Yksittäisten henkilöiden palautus käyttää Wilman vastaanottajavalitsinta parhaansa mukaan, eikä sen onnistumista voida taata kaikissa tilanteissa.
