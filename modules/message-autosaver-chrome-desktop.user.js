@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WilmaTools - Message Autosaver (Chrome Desktop)
 // @namespace    https://github.com/ljrant/WilmaTools
-// @version      0.15.1
+// @version      0.15.2
 // @description  Chrome desktop local Wilma compose autosave: subject, body and recipients.
 // @match        https://*.inschool.fi/messages/compose*
 // @run-at       document-start
@@ -287,7 +287,7 @@
       const attempt=()=>{
         if(setBodyHtml.pending!==token)return true;
         const editor=getCkeditorInstance();
-        if(!editor||editor.status!=='ready'||!editor.editable?.()||typeof editor.setData!=='function')return false;
+        if(!editor||editor.status!=='ready'||typeof editor.setData!=='function')return false;
         try{
           // CKEditor 4 setData is asynchronous. Never mutate its iframe or source
           // textarea while setData runs: both can break the editor's editable state.
@@ -312,7 +312,9 @@
         if(setBodyHtml.pending!==token||attempt()){clearInterval(wait);return}
         if(++tries>=60){
           clearInterval(wait);
-          alert('Wilman tekstieditori ei ole valmis. Viestin sisältöä ei muutettu.');
+          const instance=getCkeditorInstance();
+          console.warn('[WilmaTools] Editor diagnostic:',{hasCKEditor:!!window.CKEDITOR,instanceNames:Object.keys(window.CKEDITOR?.instances||{}),status:instance?.status||'missing',hasSetData:typeof instance?.setData==='function'});
+          alert('Viestitekstin lataus epäonnistui. Avaa konsoli ja lähetä WilmaTools Editor diagnostic -tulos.');
         }
       },250);
     }
