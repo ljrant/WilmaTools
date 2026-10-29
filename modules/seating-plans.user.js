@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Wilma Seating Plans — standalone beta
 // @namespace    arviointiapina.seating
-// @version      1.3.1
+// @version      1.3.2
 // @description  Pöytäjärjestykset, oppilasjärjestykset, arvonta ja ryhmät. Wilman tallennus pysyy erillisenä.
 // @match        https://espoo.inschool.fi/groups/*/seating*
 // @grant        GM_getValue
@@ -613,21 +613,55 @@ html body table.wsp-grid td > div.wsp-group-badge::after {content:none!important
       if(!records.length||new Set(records.map(s=>s.student)).size!==records.length||records.some(s=>!/^\d{1,32}$/.test(s.student)||!s.name||!validSeat(s)))throw Error('Opetusryhmän opiskelijalistaa ei voitu varmistaa.');
       return records;
     }
+    function groupLinkId(link){
+      try{
+        const url=new URL(link.getAttribute('href'),location.origin);
+        if(url.origin!==location.origin||url.search||url.hash)return null;
+        return url.pathname.match(/^\/groups\/(\d+)(?:\/seating)?\/?$/)?.[1]||null;
+      }catch{return null;}
+    }
+    function breadcrumbGroups(doc,currentId=null){
+      const result=new Map();
+      for(const crumb of doc.querySelectorAll('.breadcrumb li.dropdown, .breadcrumbs li.dropdown')){
+        const links=[...crumb.querySelectorAll('.dropdown-menu a[href]')];
+        const groupLinks=links.filter(link=>groupLinkId(link));
+        if(!groupLinks.length)continue;
+        for(const link of groupLinks){
+          const name=cleanGroupLabel(link.textContent);
+          if(name)result.set(groupLinkId(link),name);
+        }
+        // The current group's menu item is empty in Wilma. Its name is in
+        // the active breadcrumb outside the dropdown menu.
+        if(currentId&&!result.has(currentId)&&crumb.classList.contains('active')){
+          const label=crumb.cloneNode(true);
+          for(const menu of label.querySelectorAll('ul,ol,.dropdown-menu,[role="menu"],.caret,script,style'))menu.remove();
+          const name=cleanGroupLabel(label.textContent);
+          if(name)result.set(currentId,name);
+        }
+      }
+      return result;
+    }
     function groupName(doc,id){
-      const links=[...doc.querySelectorAll('a[href]')].filter(a=>{try{const u=new URL(a.getAttribute('href'),location.origin);return u.origin===location.origin&&[ `/groups/${id}`, `/groups/${id}/seating` ].includes(u.pathname.replace(/\/$/,''));}catch{return false;}});
+      const menuName=breadcrumbGroups(doc,id).get(id);
+      if(menuName)return menuName;
+      const links=[...doc.querySelectorAll('a[href]')].filter(a=>groupLinkId(a)===id&&!a.closest('nav,.navbar,#wsp-panel,#wsp-roster'));
       const name=links.map(a=>cleanGroupLabel(a.textContent)).find(Boolean);
       if(name)return name;
       for(const a of links){const row=a.closest('tr');if(row&&!row.closest('table.wsp-grid')){const cells=[...row.querySelectorAll('th,td')];const candidate=cells.map(cell=>cleanGroupLabel(cell.textContent)).find(text=>text&&!/^\d+$/.test(text));if(candidate)return candidate;}}
-      const heading=cleanGroupLabel(doc.querySelector('main h1')?.textContent);
-      return heading||'Opetusryhmä';
+      return cleanGroupLabel(doc.querySelector('main h1')?.textContent)||'Opetusryhmä';
     }
-    function collectGroups(doc){
-      for(const a of doc.querySelectorAll('a[href]')){try{
-        const u=new URL(a.getAttribute('href'),location.origin),m=u.pathname.match(/^\/groups\/(\d+)(?:\/seating)?\/?$/);
-        if(u.origin!==location.origin||!m)continue;
-        const name=cleanGroupLabel(a.textContent)||groupName(doc,m[1]);
-        if(name&&name!=='Opetusryhmä')groupCatalog.set(m[1],{id:m[1],name});
-      }catch{}}
+    function collectGroups(doc,currentId=null){
+      const menu=breadcrumbGroups(doc,currentId);
+      for(const [id,name] of menu)groupCatalog.set(id,{id,name});
+      // A group index may also have direct group links. Do not let its
+      // action links or labels overwrite the breadcrumb's group names.
+      for(const a of doc.querySelectorAll('a[href]')){
+        const id=groupLinkId(a);
+        if(!id||groupCatalog.has(id)||a.closest('nav,.navbar,#wsp-panel,#wsp-roster'))continue;
+        const name=cleanGroupLabel(a.textContent);
+        if(name)groupCatalog.set(id,{id,name});
+      }
+      return menu.size;
     }
     async function refreshSourceNames(){
       let changed=false;
@@ -645,7 +679,7 @@ html body table.wsp-grid td > div.wsp-group-badge::after {content:none!important
     }
     setTimeout(()=>{refreshSourceNames().catch(()=>{});},0);
     async function loadGroupCatalog(){
-      collectGroups(document);
+      if(collectGroups(document,group))return [...groupCatalog.values()].sort((a,b)=>a.name.localeCompare(b.name,'fi'));
       const link=[...document.querySelectorAll('a[href]')].find(a=>{try{return /^\/groups\/?$/.test(new URL(a.getAttribute('href'),location.origin).pathname);}catch{return false;}});
       const url=new URL(link?.getAttribute('href')||'/groups',location.origin),response=await fetch(url,{credentials:'same-origin',cache:'no-store'});
       if(!response.ok||new URL(response.url).origin!==location.origin||!/\/groups\/?$/.test(new URL(response.url).pathname))throw Error('Opetusryhmäluetteloa ei voitu avata. Voit lisätä ryhmän linkillä.');
