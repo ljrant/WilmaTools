@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Wilma Seating Plans — standalone beta
 // @namespace    arviointiapina.seating
-// @version      1.4.1
-// @description  Pöytäjärjestykset, oppilasjärjestykset, arvonta ja ryhmät. Wilman tallennus pysyy erillisenä.
+// @version      1.5.0
+// @description  Pöytäjärjestykset, oppilasjärjestykset, arvonta, yhdistelmäryhmät ja Wilman omat tuntimerkinnät.
 // @match        https://espoo.inschool.fi/groups/*/seating*
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -132,6 +132,39 @@
     if(grid.rows>200||grid.cols>200)throw Error('Pohja ylittää ruudukon enimmäiskoon.');
     return {...entry,seats,stations:[],grid};
   }
+  function attendanceCellRecord(cell) {
+    for(const input of cell.querySelectorAll('input[type="hidden"]')){
+      try{const record=JSON.parse(input.value);if(Array.isArray(record)&&record.length===6&&record.slice(0,3).every(value=>typeof value==='number'&&Number.isFinite(value)))return record;}catch{}
+    }
+    return null;
+  }
+  function attendanceGrid(doc,student) {
+    if(!/^\d+$/.test(String(student)))throw Error('Virheellinen opiskelijatunniste.');
+    const matches=[...doc.querySelectorAll('main tr[data-sid]')].filter(row=>row.getAttribute('data-sid')===String(student)&&[...row.cells].some(cell=>attendanceCellRecord(cell)));
+    if(matches.length!==1)throw Error(matches.length?'Opiskelijan tuntirivi ei ole yksiselitteinen.':'Opiskelijalle ei löydy tuntimerkintäriviä valitulta päivältä.');
+    const row=matches[0],width=[...row.cells].reduce((sum,cell)=>sum+(cell.colSpan||1),0);
+    const headers=[...doc.querySelectorAll('main tr')].filter(header=>[...header.cells].every(cell=>cell.tagName==='TH')&&[...header.cells].reduce((sum,cell)=>sum+(cell.colSpan||1),0)===width);
+    const header=headers[headers.length-1],ranges=[];let offset=0;
+    if(header)for(const cell of header.cells){const end=offset+(cell.colSpan||1);ranges.push({start:offset,end,text:cell.textContent?.trim().replace(/\s+/g,' ')});offset=end;}
+    offset=0;
+    const slots=[...row.cells].flatMap(cell=>{
+      const start=offset,end=start+(cell.colSpan||1);offset=end;
+      if(!attendanceCellRecord(cell)||cell.getAttribute('aria-disabled')==='true')return [];
+      const text=[...new Set(ranges.filter(range=>range.start<end&&range.end>start).map(range=>range.text).filter(Boolean))].join(' / ');
+      return [{index:cell.cellIndex,cell,label:text?`${cell.cellIndex+1}. ${text.slice(0,140)}`:`Tunti / sarake ${cell.cellIndex+1}`}];
+    });
+    return {row,slots};
+  }
+  function attendanceRowState(row){return JSON.stringify([...row.cells].map(cell=>attendanceCellRecord(cell)));}
+  function attendanceEditor(doc,origin) {
+    const forms=[...doc.forms].filter(form=>{
+      try{const action=new URL(form.action,origin);return action.origin===origin&&action.pathname.startsWith('/attendance/')&&form.method.toLowerCase()==='post'&&form.querySelectorAll('select').length===2&&form.querySelector('textarea')&&form.querySelector('[type="submit"]')&&form.getClientRects().length;}catch{return false;}
+    });
+    if(forms.length>1)throw Error('Avoinna on useita merkintäikkunoita.');return forms[0]||null;
+  }
+  function attendanceEditorState(form){return JSON.stringify([...form.querySelectorAll('select,textarea,input:not([type="hidden"]):not([type="submit"])')].map(input=>[input.tagName,input.type,input.value,input.checked]));}
+  function attendanceSources(sources,student){return [...sources.values()].filter(source=>source.students.some(record=>record.student===String(student)));}
+
   const FILL_DIRECTIONS=[
     ['top-left','Ylhäältä alas · vasemmalta'],
     ['top-right','Ylhäältä alas · oikealta'],
@@ -350,6 +383,17 @@ html body table.wsp-grid td > div.wsp-group-badge > button.wsp-group-reset:focus
 html body table.wsp-grid td > div.wsp-group-badge::before,
 html body table.wsp-grid td > div.wsp-group-badge::after {content:none!important;display:none!important}
 
+
+table.wsp-grid .wsp-attendance-open{position:relative!important;display:inline-block!important;width:auto!important;height:22px!important;min-height:0!important;max-width:100%!important;margin:3px 0 0!important;padding:2px 6px!important;border:1px solid #7891ad!important;border-radius:4px!important;background:#fff!important;color:#245f99!important;font:10px/16px system-ui!important;cursor:pointer!important}
+table.wsp-grid .wsp-attendance-open[hidden]{display:none!important}
+#wsp-attendance-dialog{box-sizing:border-box;width:min(1150px,97vw);max-width:97vw;height:92vh;max-height:92vh;overflow:auto;margin:auto;padding:14px;border:1px solid #9eafc2;border-radius:9px;background:white;color:#182838;font:13px/1.4 system-ui}
+#wsp-attendance-dialog::backdrop{background:#172b4277}#wsp-attendance-dialog h3{font:600 16px/1.3 system-ui;margin:0}
+#wsp-attendance-dialog .wsp-attendance-header{display:flex;gap:10px;justify-content:space-between;align-items:center}
+#wsp-attendance-dialog .wsp-attendance-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin:10px 0}
+#wsp-attendance-dialog label{display:block;flex:1 1 190px;margin:0}#wsp-attendance-dialog select{display:block;width:100%;box-sizing:border-box;margin-top:4px}
+#wsp-attendance-dialog button,#wsp-attendance-dialog select{font:inherit;min-height:32px;height:auto;padding:5px 8px;border:1px solid #9eafc2;border-radius:4px;background:#f4f7fb;color:#182838;cursor:pointer}
+#wsp-attendance-dialog [data-att=message]{min-height:20px;font-weight:600}#wsp-attendance-dialog iframe{display:block;width:100%;height:62vh;min-height:360px;border:1px solid #c6d1de;background:white;margin-top:8px;box-sizing:border-box}
+
 </style>
 <h3>Istumajärjestys</h3>
 <div class="wsp-tabs" role="tablist" aria-label="Istumajärjestyksen asetukset">
@@ -386,7 +430,7 @@ html body table.wsp-grid td > div.wsp-group-badge::after {content:none!important
 </div>
 <div id="wsp-settings" data-pane="settings" role="tabpanel" aria-labelledby="wsp-settings-tab" hidden>
 <h4>Oppilaat ja opetusryhmät</h4><div class="wsp-row"><button data-action="roster">Oppilaslista ja tunnisteet</button></div><h4>Näkyvyys</h4><div class="wsp-row"><button data-action="photos" aria-pressed="false">Piilota kuvat</button></div><h4>Varmuuskopiot</h4><div class="wsp-row"><button data-action="exportLayouts">Vie pöytäjärjestykset</button><button data-action="exportAll">Vie kaikki</button><button data-action="import">Tuo JSON</button></div><input data-role="file" type="file" accept=".json,application/json" hidden>
-<p>Kaikkien tietojen vienti sisältää opiskelijatietoja. Tallenteet säilyvät Tampermonkeyssa.</p><h4>Tuntimerkinnät</h4><a data-role="attendance">Avaa tuntimerkinnät</a><p>Merkintöjen tekeminen istumajärjestyksestä lisätään, kun Wilman lomakkeen toiminta on varmistettu.</p>
+<p>Kaikkien tietojen vienti sisältää opiskelijatietoja. Tallenteet säilyvät Tampermonkeyssa.</p><h4>Tuntimerkinnät</h4><a data-role="attendance">Avaa tuntimerkinnät</a><p>Ota tuntimerkintätila käyttöön istumajärjestyksen alta ja avaa opiskelijan kortin Merkintä-painike. Merkinnät tehdään Wilman omassa näkymässä.</p>
 </div><p role="status" aria-live="polite"></p>`;
     const surface=table.parentElement;
     const shell=document.createElement('div');shell.className='wsp-layout';
@@ -398,7 +442,7 @@ html body table.wsp-grid td > div.wsp-group-badge::after {content:none!important
 <label><input data-role="fillEnabled" type="checkbox"> Täytä paikat suunnassa</label><select data-role="fillDirection" aria-label="Paikkojen täyttösuunta"></select>
 <p>Opiskelijat arvotaan valituille paikoille. Täyttösuunta määrää käytettävien paikkojen järjestyksen. Oppilaiden ja tyhjien paikkojen lukitukset säilyvät.</p>
 <button type="button" class="wsp-primary" data-action="shuffle">Arvo opiskelijat paikoille</button></details>
-<div class="wsp-row"><button type="button" data-action="tags" aria-pressed="false">Piilota tunnisteet</button><button type="button" data-action="copyList">Kopioi oppilaslista leikepöydälle</button><button type="button" data-action="copyTables">Kopioi nimet pöytäryhmittäin</button></div>`;
+<div class="wsp-row"><button type="button" data-action="attendanceMode" aria-pressed="false">Tuntimerkinnät</button><button type="button" data-action="tags" aria-pressed="false">Piilota tunnisteet</button><button type="button" data-action="copyList">Kopioi oppilaslista leikepöydälle</button><button type="button" data-action="copyTables">Kopioi nimet pöytäryhmittäin</button></div><p data-role="attendanceHelp" hidden>Opiskelijan kortin Merkintä avaa hänen lähdeopetusryhmänsä tuntimerkinnät. Valitse tarvittaessa ryhmä ja tunti avautuvassa näkymässä.</p>`;
     surface.before(shell);board.append(surface,edges,boardTools);shell.append(board,panel);
     const $=role=>shell.querySelector(`[data-role="${role}"]`);
     const status=message=>{panel.querySelector('[role=status]').textContent=message;};
@@ -907,6 +951,160 @@ html body table.wsp-grid td > div.wsp-group-badge::after {content:none!important
       }catch(e){status(`${e.message}${completed.length?` Jo tallennettu Wilmaan: ${completed.join(', ')}.`:' Yhtään tallennusta ei ole vahvistettu.'}`);}
       finally{for(const context of contexts)context.frame.remove();saving=false;board.inert=false;panel.inert=false;updateSaveMode();}
     }
+    let attendanceMode=false,attendanceView=null;
+    const attendanceRun=(view,action)=>Promise.resolve().then(action).catch(error=>{if(attendanceView===view)view.message.textContent=error.message;});
+    function renderAttendanceButtons(){
+      for(const card of cards){
+        let button=card.querySelector('.wsp-attendance-open');
+        if(!button){button=document.createElement('button');button.type='button';button.className='wsp-attendance-open';button.textContent='Merkintä';button.title='Avaa tämän opiskelijan Wilman tuntimerkinnät';card.append(button);}
+        button.hidden=!attendanceMode;
+      }
+      const toggle=boardTools.querySelector('[data-action="attendanceMode"]');
+      toggle.textContent=attendanceMode?'Sulje tuntimerkintätila':'Tuntimerkinnät';toggle.setAttribute('aria-pressed',String(attendanceMode));
+      $('attendanceHelp').hidden=!attendanceMode;
+    }
+    function attendanceHasPending(){
+      const view=attendanceView;if(!view)return false;if(view.stagedEdits)return true;if(!view.ready)return false;
+      try{
+        const grid=attendanceGrid(view.frame.contentDocument,view.student);
+        if(attendanceRowState(grid.row)!==view.baseline)return true;
+        const editor=attendanceEditor(view.frame.contentDocument,location.origin);
+        return Boolean(editor&&(!view.editorBaselines.has(editor)||attendanceEditorState(editor)!==view.editorBaselines.get(editor)));
+      }catch{return false;}
+    }
+    function canLeaveAttendance(){
+      if(attendanceView?.saving){attendanceView.message.textContent='Wilman tallennus on kesken. Odota sivun latautumista.';return false;}
+      return !attendanceHasPending()||confirm('Tuntimerkintöjä on muokattu. Poistutaanko tallentamatta?');
+    }
+    function closeAttendance(){if(attendanceView&&canLeaveAttendance()){attendanceView.allowLeave=true;attendanceView.dialog.close();}}
+    async function openAttendance(student){
+      if(!byId.has(student))throw Error('Opiskelija ei ole istumajärjestyksessä.');
+      const memberships=attendanceSources(sources,student);if(!memberships.length)throw Error('Opiskelijan lähdeopetusryhmää ei löydy.');
+      if(attendanceView){if(!canLeaveAttendance())return;attendanceView.allowLeave=true;attendanceView.dialog.close();}
+      const dialog=document.createElement('dialog');dialog.id='wsp-attendance-dialog';
+      dialog.innerHTML=`<div class="wsp-attendance-header"><h3></h3><button type="button" data-att="close">Sulje</button></div>
+<p>Valitse lähdeopetusryhmä ja tunti. Päivää voi vaihtaa alla Wilman omalla päivämääräkentällä. Muokkaa merkintää Wilman ikkunassa ja tallenna lopuksi Wilman merkinnät.</p>
+<div class="wsp-attendance-controls"><label>Opetusryhmä<select data-att="group"></select></label><label>Tunti<select data-att="lesson" disabled><option value="">Valitse tunti</option></select></label><button type="button" data-att="open" disabled>Avaa merkintä</button><button type="button" data-att="save" disabled>Tallenna Wilman merkinnät</button></div>
+<p data-att="message" role="status" aria-live="polite"></p><a data-att="native" target="_blank" rel="noopener">Avaa tämä tuntimerkintäsivu erikseen Wilmassa</a><div data-att="frame"></div>`;
+      const find=role=>dialog.querySelector(`[data-att="${role}"]`);
+      dialog.querySelector('h3').textContent=`Tuntimerkinnät · ${byId.get(student).querySelector('p')?.textContent?.trim()||'Opiskelija'}`;
+      for(const source of memberships)find('group').add(new Option(source.label||'Opetusryhmä',source.id));
+      const view={dialog,find,student,source:memberships[0],frame:null,message:find('message'),ready:false,saving:false,stagedEdits:false,allowLeave:false,editorPosting:false,sequence:0,baseline:'',editorBaselines:new WeakMap(),timer:null,loadTimer:null};
+      attendanceView=view;
+      find('close').addEventListener('click',closeAttendance);
+      dialog.addEventListener('cancel',event=>{event.preventDefault();closeAttendance();});
+      dialog.addEventListener('close',()=>{view.allowLeave=true;clearInterval(view.timer);clearTimeout(view.loadTimer);view.frame?.remove();dialog.remove();if(attendanceView===view)attendanceView=null;},{once:true});
+      find('group').addEventListener('change',()=>{
+        const source=memberships.find(s=>s.id===find('group').value);
+        if(!source||!canLeaveAttendance()){find('group').value=view.source.id;return;}
+        view.source=source;loadAttendanceSource(view);
+      });
+      find('lesson').addEventListener('change',()=>{find('open').disabled=!view.ready||find('lesson').value==='';});
+      find('open').addEventListener('click',()=>attendanceRun(view,()=>openAttendanceLesson(view)));
+      find('save').addEventListener('click',()=>attendanceRun(view,()=>saveNativeAttendances(view)));
+      document.body.append(dialog);dialog.showModal();loadAttendanceSource(view);
+      view.timer=setInterval(()=>{
+        if(attendanceView!==view||!view.ready)return;
+        try{const editor=attendanceEditor(view.frame.contentDocument,location.origin);if(editor&&!view.editorBaselines.has(editor))view.editorBaselines.set(editor,attendanceEditorState(editor));if(!editor)view.editorPosting=false;if(!view.saving){const save=view.frame.contentDocument.getElementById('save-attendances-button');view.find('save').disabled=!save||save.disabled;}}catch{}
+      },350);
+    }
+    function loadAttendanceSource(view){
+      if(!/^\d+$/.test(view.source.id)||!view.source.students.some(record=>record.student===view.student))throw Error('Valittu opiskelija ei kuulu lähdeopetusryhmään.');
+      view.sequence++;view.allowLeave=true;view.ready=false;view.saving=false;clearTimeout(view.loadTimer);view.frame?.remove();view.stagedEdits=false;view.allowLeave=false;view.editorPosting=false;view.editorBaselines=new WeakMap();
+      view.find('open').disabled=true;view.find('save').disabled=true;view.find('lesson').disabled=true;view.find('lesson').replaceChildren(new Option('Valitse tunti',''));
+      const url=new URL(`/groups/${view.source.id}/attendance_edit`,location.origin);
+      view.find('native').href=url.href;view.message.textContent='Ladataan opiskelijan tuntimerkintöjä…';
+      const frame=document.createElement('iframe');frame.title='Wilman oma tuntimerkintänäkymä';view.frame=frame;
+      frame.addEventListener('load',()=>{clearTimeout(view.loadTimer);attendanceRun(view,()=>bindAttendanceFrame(view));});
+      frame.addEventListener('error',()=>{view.message.textContent='Wilman tuntimerkintäsivu ei latautunut. Avaa sivu yllä olevasta linkistä.';});
+      frame.src=url.href;view.find('frame').replaceChildren(frame);
+      view.loadTimer=setTimeout(()=>{if(!view.ready)view.message.textContent='Tuntimerkintäsivun lataus kestää. Voit avata sen yllä olevasta linkistä.';},15000);
+    }
+    async function bindAttendanceFrame(view){
+      const frame=view.frame,sequence=++view.sequence,wasSaving=view.saving;view.ready=false;
+      view.find('open').disabled=true;view.find('save').disabled=true;view.find('lesson').disabled=true;
+      const deadline=Date.now()+8000;let lastError=null;
+      while(Date.now()<deadline&&attendanceView===view&&view.frame===frame&&view.sequence===sequence){
+        try{
+          const url=new URL(frame.contentWindow.location.href);
+          if(url.origin!==location.origin||url.pathname.replace(/\/$/,'')!==`/groups/${view.source.id}/attendance_edit`)throw Error('Wilma avasi muun näkymän. Tarkista sivun palaute tai avaa tuntimerkinnät erikseen.');
+          const doc=frame.contentDocument,grid=attendanceGrid(doc,view.student);
+          for(const form of doc.forms){const action=new URL(form.action,url);if(action.origin!==location.origin)continue;if(action.pathname.startsWith('/attendance/')||action.pathname===url.pathname)form.target='_self';}
+          for(const row of doc.querySelectorAll('main tr[data-sid]'))row.hidden=row.getAttribute('data-sid')!==view.student;
+          // Scope the native selection to this student. Keep native disabled
+          // states and hidden editor templates intact.
+          for(const checkbox of doc.querySelectorAll('main input[type="checkbox"]'))if(!checkbox.name){
+            const sid=checkbox.closest('tr[data-sid]')?.getAttribute('data-sid');
+            if(/^\d+$/.test(sid||''))checkbox.checked=false;
+            else if(checkbox.getClientRects().length)checkbox.hidden=true;
+          }
+          grid.row.classList.add('wsp-attendance-target');
+          let style=doc.getElementById('wsp-attendance-frame-style');
+          if(!style){style=doc.createElement('style');style.id='wsp-attendance-frame-style';style.textContent='nav.navbar,body>ol.breadcrumb,main tr[data-sid][hidden],main input[type=checkbox][hidden]{display:none!important}tr.wsp-attendance-target>td{outline:1px solid #598bc0;outline-offset:-1px}';(doc.head||doc.documentElement).append(style);}
+          view.baseline=attendanceRowState(grid.row);view.ready=true;view.saving=false;view.editorPosting=false;view.allowLeave=false;view.editorBaselines=new WeakMap();if(wasSaving)view.stagedEdits=false;
+          view.find('lesson').replaceChildren(new Option('Valitse tunti',''));
+          for(const slot of grid.slots)view.find('lesson').add(new Option(slot.label,String(slot.index)));
+          // Do not silently reuse a lesson selection after a date change.
+          view.find('lesson').value='';view.find('lesson').disabled=!grid.slots.length;
+          const save=doc.getElementById('save-attendances-button');view.find('save').disabled=!save||save.disabled;
+          view.find('native').href=url.href;
+          view.message.textContent=wasSaving?'Wilman sivu latautui tallennuksen jälkeen. Tarkista merkintä alla.':grid.slots.length?'Valitse tunti tai avaa sen solu alla. Näytetään vain valitun opiskelijan rivit.':'Opiskelijalle ei ole avattavia tuntisoluja valittuna päivänä.';
+          const editorSubmitting=form=>{
+            if(!form||!form.querySelector('textarea')||form.querySelectorAll('select').length!==2)return;
+            if(!view.editorBaselines.has(form)||attendanceEditorState(form)!==view.editorBaselines.get(form))view.stagedEdits=true;
+            view.editorPosting=true;
+          };
+          doc.addEventListener('submit',event=>editorSubmitting(event.target),true);
+          frame.contentWindow.addEventListener('beforeunload',event=>{if(view.frame===frame&&!view.allowLeave&&!view.saving&&!view.editorPosting&&attendanceHasPending()){event.preventDefault();event.returnValue='';}});
+          doc.addEventListener('click',event=>{
+            const submit=event.target.closest?.('input[type=submit],button[type=submit]');if(submit)editorSubmitting(submit.form);
+            if(event.target.closest?.('#save-attendances-button'))markAttendanceSaving(view);
+            const cell=event.target.closest?.('td');if(cell?.closest('tr[data-sid]')?.getAttribute('data-sid')===view.student)setTimeout(()=>attendanceRun(view,()=>rememberAttendanceEditor(view)),100);
+          },true);
+          return;
+        }catch(error){lastError=error;await new Promise(resolve=>setTimeout(resolve,200));}
+      }
+      if(attendanceView===view&&view.frame===frame&&view.sequence===sequence){view.saving=false;view.message.textContent=lastError?.message||'Opiskelijan tuntimerkintöjä ei voitu avata.';}
+    }
+    function rememberAttendanceEditor(view){
+      if(attendanceView!==view||!view.ready)return null;
+      const editor=attendanceEditor(view.frame.contentDocument,location.origin);
+      if(editor&&!view.editorBaselines.has(editor))view.editorBaselines.set(editor,attendanceEditorState(editor));return editor;
+    }
+    function attendanceDocument(view){
+      const url=new URL(view.frame.contentWindow.location.href);
+      if(url.origin!==location.origin||url.pathname.replace(/\/$/,'')!==`/groups/${view.source.id}/attendance_edit`)throw Error('Tuntimerkintänäkymän lähdeopetusryhmä vaihtui. Lataa se uudelleen.');
+      return view.frame.contentDocument;
+    }
+    async function openAttendanceLesson(view){
+      if(attendanceView!==view||!view.ready)throw Error('Odota tuntimerkintäsivun latautumista.');
+      if(rememberAttendanceEditor(view))throw Error('Sulje tai tallenna ensin Wilman avoin merkintäikkuna.');
+      const index=Number(view.find('lesson').value);if(view.find('lesson').value==='')throw Error('Valitse ensin tunti.');
+      const grid=attendanceGrid(attendanceDocument(view),view.student),slot=grid.slots.find(s=>s.index===index);
+      if(!slot)throw Error('Valittu tunti ei enää ole käytettävissä. Valitse tunti uudelleen.');
+      slot.cell.click();const deadline=Date.now()+10000;
+      while(Date.now()<deadline&&attendanceView===view&&view.ready){
+        const editor=rememberAttendanceEditor(view);
+        if(editor){editor.scrollIntoView({block:'center'});view.message.textContent='Valitse poissaolo tai muu merkintä Wilman omassa ikkunassa. Tallenna ikkuna ja lopuksi Wilman merkinnät.';return;}
+        await new Promise(resolve=>setTimeout(resolve,150));
+      }
+      if(attendanceView===view)view.message.textContent='Wilman merkintäikkunaa ei tunnistettu. Voit käyttää tuntisolua suoraan alla tai avata sivun erikseen.';
+    }
+    function markAttendanceSaving(view){
+      view.saving=true;view.find('save').disabled=true;view.message.textContent='Tallennus käynnistetty Wilman omalla toiminnolla. Odotetaan Wilman vastausta…';
+      clearTimeout(view.loadTimer);view.loadTimer=setTimeout(()=>{
+        if(attendanceView!==view||!view.saving)return;
+        view.saving=false;view.find('save').disabled=false;view.message.textContent='Tarkista Wilman palaute alla. Tallennuksen valmistumista ei voitu vahvistaa sivun latautumisesta.';
+      },20000);
+    }
+    function saveNativeAttendances(view){
+      if(attendanceView!==view||!view.ready||view.saving)throw Error('Tuntimerkintäsivu ei ole valmis tallennukseen.');
+      if(rememberAttendanceEditor(view))throw Error('Tallenna tai sulje ensin Wilman merkintäikkuna.');
+      const doc=attendanceDocument(view);attendanceGrid(doc,view.student);
+      const button=doc.getElementById('save-attendances-button');if(!button||button.disabled||button.type!=='submit')throw Error('Wilman tallennuspainiketta ei voida käyttää.');
+      markAttendanceSaving(view);button.click();
+    }
+
     function saveTags(){GM_setValue(TAGS_KEY,JSON.stringify(studentTags));}
     function renderTags(){
       for(const card of cards){
@@ -942,7 +1140,7 @@ html body table.wsp-grid td > div.wsp-group-badge::after {content:none!important
       }
       list.append(body);rosterDialog.append(list);document.body.append(rosterDialog);rosterDialog.showModal();
     }
-    function paint(){fitGrid();saveWorking();renderTags();renderSourceVisibility();updateSaveMode();updateEditor();const button=panel.querySelector('[data-action=photos]');button.textContent=photosHidden?'Näytä kuvat':'Piilota kuvat';button.setAttribute('aria-pressed',String(photosHidden));for(const card of cards)card.classList.toggle('wsp-locked',locks.has(getStudent(card)));}
+    function paint(){fitGrid();saveWorking();renderTags();renderAttendanceButtons();renderSourceVisibility();updateSaveMode();updateEditor();const button=panel.querySelector('[data-action=photos]');button.textContent=photosHidden?'Näytä kuvat':'Piilota kuvat';button.setAttribute('aria-pressed',String(photosHidden));for(const card of cards)card.classList.toggle('wsp-locked',locks.has(getStudent(card)));}
     let resizeFrame,edgeFrame,dragging=false,fitPending=false,lastWidth=surface.clientWidth;
     const scheduleFit=()=>{if(dragging){fitPending=true;return;}cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(fitGrid);};
     window.addEventListener('resize',scheduleFit);
@@ -1039,6 +1237,7 @@ html body table.wsp-grid td > div.wsp-group-badge::after {content:none!important
       const next=clone(db),saved={id:id(),name,seats:entry.seats,grid:entry.grid};next.layouts.push(saved);saveDB(next);refresh();$('layouts').value=saved.id;status(`Pohja ”${name}” tallennettu. Ota se käyttöön valitsemalla Ota käyttöön.`);
     }
     const actions={
+      attendanceMode:()=>{attendanceMode=!attendanceMode;renderAttendanceButtons();},
       saveEditor,copyList,
       applyEditor:()=>{useLayout(makeEditorLayout(editorConfig()));$('layouts').value='';updateEditor();},
       loadLayout:()=>useLayout(chosen('layouts')),saveLayout:()=>store('layouts',false),updateLayout:()=>store('layouts',true),renameLayout:()=>rename('layouts'),deleteLayout:()=>remove('layouts'),
@@ -1070,6 +1269,8 @@ html body table.wsp-grid td > div.wsp-group-badge::after {content:none!important
     table.addEventListener('click',event=>{
       const cell=event.target.closest('td,th');if(!cell||cell.closest('table')!==table)return;
       const card=event.target.closest('.ui-draggable:not(.wsp-empty-card)'),seat=seatAt(cell);
+      const attendanceButton=event.target.closest('.wsp-attendance-open');
+      if(attendanceButton&&card){event.preventDefault();event.stopImmediatePropagation();run(()=>openAttendance(getStudent(card)));return;}
       if(event.altKey&&(card||seat)){
         event.preventDefault();event.stopImmediatePropagation();last=snapshot();remember();
         if(card){const student=getStudent(card);locks.has(student)?locks.delete(student):locks.add(student);status('Oppilaan paikkalukitus vaihdettu.');}
@@ -1111,7 +1312,7 @@ html body table.wsp-grid td > div.wsp-group-badge::after {content:none!important
     if(nativeForm&&typeof nativeForm.submit==='function'){const submit=nativeForm.submit.bind(nativeForm);nativeForm.submit=()=>isCombined()?run(saveGroups):submit();}
 
     field.form?.addEventListener('submit',()=>{dirty=false;});
-    window.addEventListener('beforeunload',event=>{saveWorking();if(dirty){event.preventDefault();event.returnValue='';}});
+    window.addEventListener('beforeunload',event=>{saveWorking();if(dirty||attendanceHasPending()){event.preventDefault();event.returnValue='';}});
     let restored=false,restoreError=false;restoringShared=true;try{restored=restoreWorking();}catch{restoreError=true;}finally{restoringShared=false;}
     window.addEventListener('focus',()=>{if(saving)return;const id=GM_getValue(`${KEY}:combined-link:${group}`,null);if(id){restoringShared=true;try{restoreWorking();}catch(e){status(e.message);}finally{restoringShared=false;}paint();}else if(sharedId){sharedId=null;installRoster({sources:[{id:group,label:groupName(document,group),students:clone(nativeRecords)}],active:[...nativeById.keys()]},nativeRecords,seats,gridSize(),false,true);status('Ryhmien yhdistäminen poistettiin toisessa näkymässä.');}});
     refresh();paint();const conflict=snapshot().some(s=>seats.some(t=>t.emptyLocked&&coord(t)===coord(s)));
