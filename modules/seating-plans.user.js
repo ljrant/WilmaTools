@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Wilma Seating Plans — standalone beta
 // @namespace    arviointiapina.seating
-// @version      1.3.2
+// @version      1.4.0
 // @description  Pöytäjärjestykset, oppilasjärjestykset, arvonta ja ryhmät. Wilman tallennus pysyy erillisenä.
 // @match        https://espoo.inschool.fi/groups/*/seating*
 // @grant        GM_getValue
@@ -110,6 +110,28 @@
     for(const station of entry.stations||[])result.push({row:station.row,col:station.col,label:station.name,emptyLocked:true});
     return result;
   }
+  function completeLayout(entry,minimum) {
+    const seats=layoutSeats(entry),columns=[...new Set(seats.filter(s=>!s.emptyLocked).map(s=>s.col))].sort((a,b)=>a-b);
+    if(!columns.length)columns.push(...[...new Set(seats.map(s=>s.col))].sort((a,b)=>a-b));
+    if(!columns.length)columns.push(1,2,3,4,5,6);
+    let missing=Math.max(0,minimum-seats.filter(s=>!s.emptyLocked).length),row=Math.max(0,...seats.map(s=>s.row))+2;
+    const originalLength=seats.length;
+    let nextGroup=Math.max(seats.length,...seats.map(s=>s.group||0))+1;
+    while(missing>0){
+      if(row>198||seats.length>=10000)throw Error('Lisäpaikat eivät mahdu ruudukkoon. Valitse leveämpi pohja tai vähennä käytävärivejä.');
+      let previous=null,number=nextGroup++;
+      for(const col of columns){
+        if(!missing)break;
+        if(seats.length>=10000)throw Error('Pohjan tekninen enimmäiskoko on 10 000 paikkaa.');
+        if(previous!==null&&col>previous+1)number=nextGroup++;
+        seats.push({row,col,...(number<=999?{group:number}:{})});missing--;previous=col;
+      }
+      row+=2;
+    }
+    const grid={rows:Math.max(entry.grid?.rows||1,...seats.map(s=>s.row+1),seats.length>originalLength?row:1),cols:Math.max(entry.grid?.cols||1,...seats.map(s=>s.col+1))};
+    if(grid.rows>200||grid.cols>200)throw Error('Pohja ylittää ruudukon enimmäiskoon.');
+    return {...entry,seats,stations:[],grid};
+  }
   const FILL_DIRECTIONS=[
     ['top-left','Ylhäältä alas · vasemmalta'],
     ['top-right','Ylhäältä alas · oikealta'],
@@ -144,6 +166,7 @@
   function cleanGroupLabel(value) {
     if(typeof value!=='string')return '';
     const name=value.replace(/\s*[([]?\s*\d+\s+(?:opiskelijaa?|oppilasta|students?|elever|studerande)\s*[)\]]?\s*/gi,' ').replace(/\s+/g,' ').trim().replace(/^[\s|·,:;–—-]+|[\s|·,:;–—-]+$/g,'');
+    if(name.split(/\s*\/\s*/).every(part=>/^opetusryhmä$/i.test(part)))return '';
     if(!name||/^(?:ryhmä|opetusryhmä|opetusryhmät|ryhmät|istumajärjestys|poissaolot|tuntipäiväkirja|arviointi|wilma|oppilaat|opiskelijat|tiedot|näytä|tuen merkinnät|oppimisen tuki|tuki|tuntimerkinnät|kokeet|kotitehtävät|viestit)$/i.test(name))return '';
     return name.slice(0,100);
   }
@@ -205,6 +228,8 @@
     const locks=new Set();
     let seats=initial.map(({row,col})=>({row,col}));
     let photosHidden=Boolean(GM_getValue(KEY+':photosHidden',false));
+    let drawMode=GM_getValue(KEY+':drawMode','empty-first');
+    if(!['empty-first','all','current'].includes(drawMode))drawMode='empty-first';
     let fillEnabled=Boolean(GM_getValue(KEY+':fillEnabled',false));
     let fillDirection=GM_getValue(KEY+':fillDirection','top-left');
     if(!FILL_DIRECTIONS.some(([key])=>key===fillDirection))fillDirection='top-left';
@@ -231,7 +256,15 @@ body.wsp-page .container{width:auto!important;max-width:none!important}
 #wsp-panel button,#wsp-panel select,#wsp-panel input{font:inherit;padding:5px;border:1px solid #aab8c8;border-radius:4px;background:white;color:#182838}
 #wsp-panel button{cursor:pointer;white-space:normal}#wsp-panel .wsp-row button{flex:1 1 auto}#wsp-panel label{display:block;width:100%;margin:5px 0}#wsp-panel select{width:100%;max-width:100%;margin-top:4px}
 #wsp-panel .wsp-primary{background:#245f99;color:white;border-color:#245f99;width:100%;padding:9px}#wsp-panel p{margin:6px 0;font-size:11px;line-height:1.4}
-#wsp-panel .wsp-tabs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;margin:9px 0;border-bottom:1px solid #bac9db}.wsp-tabs button{min-width:0;font-size:11px;padding:6px 2px}.wsp-tabs button{border:0!important;border-bottom:3px solid transparent!important;border-radius:0!important;background:transparent!important}.wsp-tabs button[aria-selected=true]{border-bottom-color:#245f99!important}.wsp-tabs button[aria-selected=true]{background:transparent!important;color:#245f99!important;font-weight:700}
+#wsp-panel .wsp-tabs{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,1.12fr) minmax(0,.76fr);gap:3px;margin:9px 0;border-bottom:1px solid #bac9db}
+#wsp-panel .wsp-tabs > button{box-sizing:border-box!important;width:100%!important;min-width:0!important;max-width:100%!important;min-height:36px!important;height:auto!important;margin:0!important;font:600 11px/1.25 system-ui!important;padding:6px 2px!important;white-space:normal!important;overflow-wrap:anywhere!important;overflow:hidden!important;border:0!important;border-bottom:3px solid transparent!important;border-radius:0!important;background:transparent!important}
+#wsp-panel .wsp-tabs > button[aria-selected=true]{border-bottom-color:#245f99!important;color:#245f99!important}
+.wsp-board-actions{margin-top:12px;border-top:1px solid #d9e0e8;padding-top:10px;font:12px/1.4 system-ui;color:#182838}
+.wsp-board-actions .wsp-row{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0}
+.wsp-board-actions button,.wsp-board-actions select{font:inherit!important;border:1px solid #aab8c8;border-radius:4px;background:white;color:#182838;padding:7px;box-sizing:border-box;max-width:100%;height:auto!important;min-height:0!important}
+.wsp-board-actions button,.wsp-board-actions summary{cursor:pointer}.wsp-board-actions summary{font-weight:600;padding:5px 0}
+.wsp-board-actions label{display:block;margin:8px 0}.wsp-board-actions select{width:100%;margin-top:4px}
+.wsp-board-actions .wsp-primary{background:#245f99;color:white;border-color:#245f99}.wsp-board-actions [hidden]{display:none!important}
 #wsp-panel [hidden]{display:none!important}#wsp-panel details{margin-top:12px}#wsp-panel summary{cursor:pointer}#wsp-panel [role=status]{font-weight:600;border-top:1px solid #d7dfe8;padding-top:8px;margin-top:10px}
 table.wsp-grid{width:100%!important;max-width:100%!important;min-width:0!important;table-layout:fixed!important;border-collapse:separate!important;border-spacing:2px!important}
 table.wsp-grid td,table.wsp-grid th{position:relative;box-sizing:border-box!important;min-width:0!important;max-width:none!important;vertical-align:middle!important;padding:2px!important;overflow:hidden}
@@ -325,21 +358,18 @@ html body table.wsp-grid td > div.wsp-group-badge::after {content:none!important
 <button type="button" role="tab" id="wsp-settings-tab" data-tab="settings" aria-selected="false" aria-controls="wsp-settings">Asetukset</button>
 </div>
 <div id="wsp-students" data-pane="students" role="tabpanel" aria-labelledby="wsp-students-tab">
-<h4>Oppilaat ja opetusryhmät</h4>
-<div class="wsp-row"><button data-action="roster">Oppilaslista ja tunnisteet</button><button data-action="tags" aria-pressed="false">Piilota tunnisteet</button></div>
-
-<label><input data-role="fillEnabled" type="checkbox"> Täytä paikat suunnassa</label><select data-role="fillDirection" aria-label="Paikkojen täyttösuunta"></select><p>Täyttösuunta määrää käytettävät pöydät. Opiskelijat arvotaan niille. Oppilaiden lukitukset ja tyhjät lukitukset säilyvät.</p>
-<button class="wsp-primary" data-action="shuffle">Arvo oppilaat paikoille</button>
 <label>Oppilasjärjestys<select data-role="arrangements"><option value="">Valitse järjestys</option></select></label>
 <div class="wsp-row"><button data-action="loadArrangement">Palauta</button><button data-action="saveArrangement">Tallenna uutena</button><button data-action="updateArrangement">Päivitä</button></div>
 <details><summary>Tallenteen hallinta</summary><div class="wsp-row"><button data-action="renameArrangement">Nimeä</button><button data-action="deleteArrangement">Poista</button></div></details>
 <div class="wsp-row"><button data-action="undo">Kumoa</button><button data-action="unlock">Vapauta lukitukset</button></div>
-<div class="wsp-row"><button data-action="copyTables">Kopioi nimet pöytäryhmittäin</button></div>
 <h4>Wilma-tallennus</h4><p data-role="saveMode"></p><div class="wsp-row"><button data-action="saveGroups">Tallenna opetusryhmiin Wilmaan</button></div>
-<p>Alt-napsautus lukitsee oppilaan nykyiselle paikalleen. Arvonta ei käytä tyhjiksi lukittuja pöytiä. Opetusryhmiä ja opiskelijakohtaisia tunnisteita muokataan oppilaslistassa.</p>
+<p>Alt-napsautus lukitsee oppilaan nykyiselle paikalleen. Arvonta ja kopiointi löytyvät istumajärjestyksen alta.</p>
 </div>
 <div id="wsp-desks" data-pane="desks" role="tabpanel" aria-labelledby="wsp-desks-tab" hidden>
-<h4>Pöytäjärjestyseditori</h4>
+<h4>Pöytäjärjestys ja paikat</h4><label>Pohja<select data-role="layouts"><option value="">Valitse pöytäjärjestys</option></select></label>
+<div class="wsp-row"><button data-action="loadLayout">Ota käyttöön</button><button data-action="saveLayout">Tallenna uutena</button><button data-action="updateLayout">Päivitä valittu</button></div>
+<details><summary>Pohjan hallinta</summary><div class="wsp-row"><button data-action="renameLayout">Nimeä</button><button data-action="deleteLayout">Poista</button></div></details>
+<details data-role="editorDetails"><summary>Pohjaeditori</summary>
 <label>Paikkoja yhteensä <input data-role="editorTotal" type="number" min="1" max="10000" style="width:85px"></label>
 <div class="wsp-editor-fields" style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
 <label>Pöytäryhmiä <input data-role="editorGroups" type="number" min="1" max="999" value="6" style="width:100%;box-sizing:border-box"></label>
@@ -347,25 +377,30 @@ html body table.wsp-grid td > div.wsp-group-badge::after {content:none!important
 <label>Pöytärivejä / ryhmä <input data-role="editorRows" type="number" min="1" max="100" value="2" style="width:100%;box-sizing:border-box"></label>
 <label>Pöytäsarakkeita / ryhmä <input data-role="editorCols" type="number" min="1" max="100" value="2" style="width:100%;box-sizing:border-box"></label>
 </div><p data-role="editorSummary" aria-live="polite"></p><div data-role="editorPreview" aria-label="Pöytäjärjestyksen esikatselu"></div>
-<div class="wsp-row"><button data-action="applyEditor">Ota editorin pohja käyttöön</button></div>
+<label>Pohjan nimi <input data-role="editorName" type="text" maxlength="100" placeholder="Oma pöytäjärjestys" style="width:100%;box-sizing:border-box"></label><div class="wsp-row"><button data-action="applyEditor">Ota käyttöön</button><button data-action="saveEditor">Tallenna pohja</button></div>
 <p>Kokonaispaikkamäärä jaetaan tasaisesti ryhmiin. Tarvittaessa ryhmiin lisätään pöytärivejä. Ryhmien väliin ja reunoille jää käytävä. Käyttöönotto sijoittaa nykyiset oppilaat uuden pohjan paikoille. Voit tallentaa pohjan omalla nimellä.</p>
-<h4>Pöytäjärjestys ja paikat</h4><label>Pohja<select data-role="layouts"><option value="">Valitse pöytäjärjestys</option></select></label>
-<div class="wsp-row"><button data-action="loadLayout">Ota käyttöön</button><button data-action="saveLayout">Tallenna uutena</button><button data-action="updateLayout">Päivitä valittu</button></div>
-<details><summary>Pohjan hallinta</summary><div class="wsp-row"><button data-action="renameLayout">Nimeä</button><button data-action="deleteLayout">Poista</button></div></details>
+</details>
 <p data-role="seatCount"></p>
 <div class="wsp-row"><button data-action="undo">Kumoa</button></div>
 <details><summary>Muokkaus suoraan ruudukossa</summary><p>Valkoisen ruudun + lisää pöydän ja tyhjän pöydän × poistaa sen. Raahaa tyhjä pöytä valkoiseen ruutuun. Reunaan lisätyn tai siirretyn pöydän ulkopuolelle syntyy automaattisesti käytävä.</p><p>Muokkaa pöydän ”tyhjä”-tekstiä suoraan. Esimerkiksi opettajan pöytä: nimeä ja Alt-lukitse se tyhjäksi. Pelkkä nimen muuttaminen ei lukitse pöytää.</p><p>Ryhmämerkin numeroa voi muuttaa suoraan pöydässä. Sama numero yhdistää pöydät samaan ryhmään. Numeron vieressä näkyy ryhmän paikkamäärä. ↺ palauttaa automaattisen ryhmän.</p><p>Paikat, nimet, lukitukset ja ryhmänumerot tallentuvat automaattisesti tälle ryhmälle. Valmiit pohjat käyttävät yllä määritettyä paikkamäärää.</p></details>
 </div>
 <div id="wsp-settings" data-pane="settings" role="tabpanel" aria-labelledby="wsp-settings-tab" hidden>
-<h4>Näkyvyys</h4><div class="wsp-row"><button data-action="photos" aria-pressed="false">Piilota kuvat</button></div><h4>Varmuuskopiot</h4><div class="wsp-row"><button data-action="exportLayouts">Vie pöytäjärjestykset</button><button data-action="exportAll">Vie kaikki</button><button data-action="import">Tuo JSON</button></div><input data-role="file" type="file" accept=".json,application/json" hidden>
-<p>Kaikkien tietojen vienti sisältää opiskelijatietoja. Tallenteet säilyvät Tampermonkeyssa.</p><h4>Poissaolot</h4><a data-role="attendance">Avaa poissaolosivu</a><p>Poissaolojen suora merkintä ei ole vielä käytössä.</p>
+<h4>Oppilaat ja opetusryhmät</h4><div class="wsp-row"><button data-action="roster">Oppilaslista ja tunnisteet</button></div><h4>Näkyvyys</h4><div class="wsp-row"><button data-action="photos" aria-pressed="false">Piilota kuvat</button></div><h4>Varmuuskopiot</h4><div class="wsp-row"><button data-action="exportLayouts">Vie pöytäjärjestykset</button><button data-action="exportAll">Vie kaikki</button><button data-action="import">Tuo JSON</button></div><input data-role="file" type="file" accept=".json,application/json" hidden>
+<p>Kaikkien tietojen vienti sisältää opiskelijatietoja. Tallenteet säilyvät Tampermonkeyssa.</p><h4>Tuntimerkinnät</h4><a data-role="attendance">Avaa tuntimerkinnät</a><p>Merkintöjen tekeminen istumajärjestyksestä lisätään, kun Wilman lomakkeen toiminta on varmistettu.</p>
 </div><p role="status" aria-live="polite"></p>`;
     const surface=table.parentElement;
     const shell=document.createElement('div');shell.className='wsp-layout';
     const board=document.createElement('div');board.className='wsp-board';
     const edges=document.createElement('div');edges.className='wsp-edges';
-    surface.before(shell);board.append(surface,edges);shell.append(board,panel);
-    const $=role=>panel.querySelector(`[data-role="${role}"]`);
+    const boardTools=document.createElement('section');boardTools.className='wsp-board-actions';
+    boardTools.innerHTML=`<details data-role="randomDetails"><summary>Arvo opiskelijat paikoille</summary>
+<label>Arvonnan paikat<select data-role="drawMode"><option value="empty-first">Ensisijaisesti tyhjät paikat</option><option value="all">Kaikki käytettävissä olevat paikat</option><option value="current">Vain opiskelijoiden nykyiset paikat</option></select></label>
+<label><input data-role="fillEnabled" type="checkbox"> Täytä paikat suunnassa</label><select data-role="fillDirection" aria-label="Paikkojen täyttösuunta"></select>
+<p>Opiskelijat arvotaan valituille paikoille. Täyttösuunta määrää käytettävien paikkojen järjestyksen. Oppilaiden ja tyhjien paikkojen lukitukset säilyvät.</p>
+<button type="button" class="wsp-primary" data-action="shuffle">Arvo opiskelijat paikoille</button></details>
+<div class="wsp-row"><button type="button" data-action="tags" aria-pressed="false">Piilota tunnisteet</button><button type="button" data-action="copyList">Kopioi oppilaslista leikepöydälle</button><button type="button" data-action="copyTables">Kopioi nimet pöytäryhmittäin</button></div>`;
+    surface.before(shell);board.append(surface,edges,boardTools);shell.append(board,panel);
+    const $=role=>shell.querySelector(`[data-role="${role}"]`);
     const status=message=>{panel.querySelector('[role=status]').textContent=message;};
     const run=async action=>{try{await action();}catch(e){status(e.message);}};
     $('attendance').href=`/groups/${group}/attendance_edit`;
@@ -399,6 +434,7 @@ html body table.wsp-grid td > div.wsp-group-badge::after {content:none!important
     }
     $('layouts').addEventListener('change',()=>run(()=>{if($('layouts').value)useLayout(chosen('layouts'));}));
     for(const [key,label] of FILL_DIRECTIONS)$('fillDirection').add(new Option(label,key));
+    $('drawMode').value=drawMode;$('drawMode').addEventListener('change',()=>{drawMode=$('drawMode').value;GM_setValue(KEY+':drawMode',drawMode);});
     $('fillEnabled').checked=fillEnabled;$('fillDirection').value=fillDirection;$('fillDirection').disabled=!fillEnabled;
     $('fillEnabled').addEventListener('change',()=>{fillEnabled=$('fillEnabled').checked;$('fillDirection').disabled=!fillEnabled;GM_setValue(KEY+':fillEnabled',fillEnabled);});
     $('fillDirection').addEventListener('change',()=>{fillDirection=$('fillDirection').value;GM_setValue(KEY+':fillDirection',fillDirection);});
@@ -664,10 +700,13 @@ html body table.wsp-grid td > div.wsp-group-badge::after {content:none!important
       return menu.size;
     }
     async function refreshSourceNames(){
+      collectGroups(document,group);
       let changed=false;
       for(const tag of Object.values(studentTags))if(tag.teachingGroup&&!cleanGroupLabel(tag.teachingGroup)){tag.teachingGroup='';changed=true;}
       for(const source of [...sources.values()]){
         if(cleanGroupLabel(source.label)&&source.label!=='Opetusryhmä')continue;
+        const known=cleanGroupLabel(groupCatalog.get(source.id)?.name);
+        if(known){source.label=known;changed=true;continue;}
         try{
           await readGroup(source.id);
           if(sources.get(source.id)!==source)continue;
@@ -748,11 +787,13 @@ html body table.wsp-grid td > div.wsp-group-badge::after {content:none!important
       if(plan.grid.rows>200||plan.grid.cols>200)throw Error('Yhdistelmä ei mahdu ruudukkoon.');
       const known=new Map();for(const source of clean.sources.values())for(const record of source.students)if(!known.has(record.student))known.set(record.student,record);
       applying=true;ensureGrid(plan.grid);
+      const previousCount=cards.length;
       const oldById=new Map(byId),wanted=new Set(clean.active);
       for(const [student,card] of oldById)if(!wanted.has(student)){if(!nativeById.has(student)&&jq?.data(card,'ui-draggable'))jq(card).draggable('destroy');card.remove();}
       for(const [student,card] of nativeById)if(!wanted.has(student))card.remove();
       sources.clear();for(const [id,source] of clean.sources)sources.set(id,source);activeIds=wanted;
       cards=clean.active.map(student=>nativeById.get(student)||oldById.get(student)||foreignCard(known.get(student)));byId=new Map(cards.map(card=>[getStudent(card),card]));
+      if(cards.length>previousCount){const total=Number($('editorTotal').value);$('editorTotal').value=String(Math.max(Number.isFinite(total)?total:0,cards.length));}
       seats=plan.seats;for(const p of plan.assignments){const card=byId.get(p.student);cellAt(p).append(card);card.style.left='';card.style.top='';}
       for(const id of [...locks])if(!activeIds.has(id))locks.delete(id);
       last=snapshot();if(pad)padEdges();last=sync();applying=false;undo=[];nativeDragStart=null;paint();
@@ -869,12 +910,12 @@ html body table.wsp-grid td > div.wsp-group-badge::after {content:none!important
     function saveTags(){GM_setValue(TAGS_KEY,JSON.stringify(studentTags));}
     function renderTags(){
       for(const card of cards){
-        const student=getStudent(card),tag=studentTags[student]||{},text=[tag.teachingGroup||sourceNames(student),tag.note].filter(Boolean).join(' · ');
+        const student=getStudent(card),tag=studentTags[student]||{},text=[cleanGroupLabel(tag.teachingGroup)||sourceNames(student),tag.note].filter(Boolean).join(' · ');
         let marker=card.querySelector('.wsp-student-tag');
         if(text&&!marker){marker=document.createElement('small');marker.className='wsp-student-tag';card.append(marker);}
         if(marker){marker.textContent=text;marker.title=text;marker.hidden=tagsHidden||tag.hidden===true||!text;marker.style.setProperty('display',marker.hidden?'none':'block','important');}
       }
-      const button=panel.querySelector('[data-action=tags]');button.textContent=tagsHidden?'Näytä tunnisteet':'Piilota tunnisteet';button.setAttribute('aria-pressed',String(tagsHidden));
+      for(const button of shell.querySelectorAll('[data-action=tags]')){button.textContent=tagsHidden?'Näytä tunnisteet':'Piilota tunnisteet';button.setAttribute('aria-pressed',String(tagsHidden));}
       if(rosterDialog?.open){const checkbox=rosterDialog.querySelector('[data-global-tags]');if(checkbox)checkbox.checked=!tagsHidden;}
     }
     function openRoster(){
@@ -920,10 +961,13 @@ html body table.wsp-grid td > div.wsp-group-badge::after {content:none!important
     }
     function useLayout(entry){
       if(locks.size)throw Error('Vapauta oppilaiden lukitukset ennen pöytäjärjestyksen vaihtamista.');
+      const originalCount=layoutSeats(entry).length;entry=completeLayout(entry,cards.length);
+      const added=entry.seats.length-originalCount;
+      if(added)$('editorTotal').value=String(Math.max(presetCount(),entry.seats.length));
       const nextSeats=layoutSeats(entry),available=ordered(nextSeats.filter(s=>!s.emptyLocked));
       if(available.length<cards.length)throw Error('Pöytäjärjestyksessä on liian vähän arvottavia paikkoja oppilaille.');
       apply(snapshot().map((s,i)=>({...available[i],student:s.student})),nextSeats,true,entry.grid);
-      if(entry.grid){trimGrid(entry.grid);paint();}if($('layouts').querySelector(`option[value="${entry.id}"]`))$('layouts').value=entry.id;status(`Pöytäjärjestys ”${entry.name}” käytössä. Tallenna oppilassijoittelu myös Wilmaan.`);
+      if(entry.grid){trimGrid(entry.grid);paint();}if($('layouts').querySelector(`option[value="${entry.id}"]`))$('layouts').value=entry.id;if(added)refresh();status(`Pöytäjärjestys ”${entry.name}” käytössä.${added?` Lisätty automaattisesti ${added} puuttuvaa paikkaa.`:''} Tallenna oppilassijoittelu myös Wilmaan.`);
     }
     function shuffled(items){
       const result=[...items];for(let i=result.length-1;i>0;i--){const range=i+1,limit=Math.floor(4294967296/range)*range,n=new Uint32Array(1);do{crypto.getRandomValues(n);}while(n[0]>=limit);const j=n[0]%range;[result[i],result[j]]=[result[j],result[i]];}return result;
@@ -931,13 +975,20 @@ html body table.wsp-grid td > div.wsp-group-badge::after {content:none!important
     function randomize(){
       const current=snapshot(),pinned=current.filter(s=>locks.has(s.student)),pinnedPlaces=new Set(pinned.map(coord));
       if(pinned.some(s=>!seats.some(t=>!t.emptyLocked&&coord(t)===coord(s))))throw Error('Lukitun oppilaan paikka ei ole käytettävissä. Vapauta lukitus.');
-      const movable=current.filter(s=>!locks.has(s.student)),available=seats.filter(s=>!s.emptyLocked&&!pinnedPlaces.has(coord(s)));
+      const occupied=new Set(current.map(coord));
+      const movable=current.filter(s=>!locks.has(s.student)),available=seats.filter(s=>!s.emptyLocked&&!pinnedPlaces.has(coord(s))&&(drawMode!=='current'||occupied.has(coord(s))));
       if(available.length<movable.length)throw Error('Arvottavia paikkoja on liian vähän. Lisää paikkoja tai vapauta tyhjiä lukituksia.');
-      const occupied=new Set(current.map(coord)),places=(fillEnabled?orderFillSeats(available,fillDirection):[...shuffled(available.filter(s=>!occupied.has(coord(s)))),...shuffled(available.filter(s=>occupied.has(coord(s))))]).slice(0,movable.length),students=shuffled(movable.map(s=>s.student));
+      const places=(fillEnabled?orderFillSeats(available,fillDirection):drawMode==='all'||drawMode==='current'?shuffled(available):[...shuffled(available.filter(s=>!occupied.has(coord(s)))),...shuffled(available.filter(s=>occupied.has(coord(s))))]).slice(0,movable.length),students=shuffled(movable.map(s=>s.student));
       const previous=new Map(current.map(s=>[s.student,coord(s)])),owner=new Map();
       function place(student,seen){for(let i=0;i<places.length;i++){if(seen.has(i)||coord(places[i])===previous.get(student))continue;seen.add(i);if(!owner.has(i)||place(owner.get(i),seen)){owner.set(i,student);return true;}}return false;}
       const matched=students.every(student=>place(student,new Set()));
       apply([...pinned,...places.map((s,i)=>({...s,student:matched?owner.get(i):students[i]}))]);
+    }
+    async function copyList(){
+      const names=snapshot().filter(s=>{const card=byId.get(s.student);return !card.classList.contains('wsp-source-hidden');}).map(s=>byId.get(s.student).querySelector('p')?.textContent?.trim().replace(/\s+/g,' '));
+      if(names.some(name=>!name))throw Error('Opiskelijan nimeä ei löydy kortista.');
+      const text=names.join('\n');if(typeof GM_setClipboard==='function')GM_setClipboard(text,'text');else await navigator.clipboard.writeText(text);
+      status(`Oppilaslista kopioitu: ${names.length} opiskelijaa.`);
     }
     async function copyTables(){
       const occupants=new Map(snapshot().map(s=>[coord(s),s.student]));
@@ -967,13 +1018,20 @@ html body table.wsp-grid td > div.wsp-group-badge::after {content:none!important
         $('editorSummary').textContent=`${config.groups} pöytäryhmää · ${entry.seats.length} paikkaa · ruudukko ${entry.grid.rows} × ${entry.grid.cols}. ${config.total>config.groups*config.rows*config.cols?'Tarvittavat lisärivit luodaan automaattisesti.':''}`;
         const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox',`0 0 ${entry.grid.cols*10} ${entry.grid.rows*10}`);svg.setAttribute('width','100%');svg.setAttribute('height','130');svg.setAttribute('aria-hidden','true');svg.style.background='white';
         entry.seats.forEach((seat,i)=>{const rect=document.createElementNS(svg.namespaceURI,'rect');rect.setAttribute('x',String(seat.col*10));rect.setAttribute('y',String(seat.row*10));rect.setAttribute('width','9');rect.setAttribute('height','9');rect.setAttribute('fill','#cbd5e1');rect.setAttribute('stroke','#94a3b8');rect.setAttribute('stroke-width','.4');svg.append(rect);});preview.append(svg);
-        button.disabled=usable<cards.length;button.title=button.disabled?'Paikkoja on lisättävä, jotta kaikki opiskelijat mahtuvat.':'';
+        panel.querySelector('[data-action=saveEditor]').disabled=false;
+        button.disabled=false;button.title=usable<cards.length?'Puuttuvat opiskelijapaikat lisätään automaattisesti käyttöönotossa.':'';
         GM_setValue(`${KEY}:editor`,JSON.stringify(config));
-      }catch(e){$('editorSummary').textContent=e.message;button.disabled=true;}
+      }catch(e){$('editorSummary').textContent=e.message;button.disabled=true;panel.querySelector('[data-action=saveEditor]').disabled=true;}
     }
     try{const config=JSON.parse(GM_getValue(`${KEY}:editor`,'null'));if(config)for(const [key,role] of [['groups','editorGroups'],['across','editorAcross'],['rows','editorRows'],['cols','editorCols'],['total','editorTotal']])if(Number.isInteger(config[key]))$(role).value=String(config[key]);}catch{}
     for(const role of ['editorGroups','editorAcross','editorRows','editorCols','editorTotal'])$(role).addEventListener('input',()=>{updateEditor();if(role==='editorTotal')refresh();});
+    function saveEditor(){
+      const entry=makeEditorLayout(editorConfig()),name=$('editorName').value.trim()||entry.name;
+      if(!validName(name))throw Error('Anna pohjalle nimi (1–100 merkkiä).');
+      const next=clone(db),saved={id:id(),name,seats:entry.seats,grid:entry.grid};next.layouts.push(saved);saveDB(next);refresh();$('layouts').value=saved.id;status(`Pohja ”${name}” tallennettu. Ota se käyttöön valitsemalla Ota käyttöön.`);
+    }
     const actions={
+      saveEditor,copyList,
       applyEditor:()=>{useLayout(makeEditorLayout(editorConfig()));$('layouts').value='';updateEditor();},
       loadLayout:()=>useLayout(chosen('layouts')),saveLayout:()=>store('layouts',false),updateLayout:()=>store('layouts',true),renameLayout:()=>rename('layouts'),deleteLayout:()=>remove('layouts'),
       loadArrangement:()=>{const entry=chosen('arrangements');if(locks.size)throw Error('Vapauta oppilaiden lukitukset ennen palautusta.');if(entry.roster){const merged=new Map(seats.map(s=>[coord(s),s]));for(const {row,col} of entry.assignments)if(!merged.has(coord({row,col})))merged.set(coord({row,col}),{row,col});installRoster(entry.roster,entry.assignments,[...merged.values()],entry.grid);if(entry.tags){studentTags=cleanTags({...studentTags,...entry.tags});saveTags();renderTags();}return;}if(isCombined()){const wanted=new Set(entry.assignments.map(s=>s.student)),merged=new Map(seats.map(s=>[coord(s),s]));for(const {row,col} of entry.assignments)if(!merged.has(coord({row,col})))merged.set(coord({row,col}),{row,col});installRoster({sources:[{id:group,label:sources.get(group)?.label||'',students:clone(nativeRecords)}],active:[...nativeById.keys()].filter(id=>wanted.has(id))},entry.assignments,[...merged.values()],entry.grid);if(entry.tags){studentTags=cleanTags({...studentTags,...entry.tags});saveTags();renderTags();}return;}if(locks.size)throw Error('Vapauta oppilaiden lukitukset ennen palautusta.');const merged=new Map(seats.map(s=>[coord(s),s]));for(const {row,col} of entry.assignments)if(!merged.has(coord({row,col})))merged.set(coord({row,col}),{row,col});apply(entry.assignments,[...merged.values()],true,entry.grid);if(entry.tags){studentTags=cleanTags({...studentTags,...entry.tags});saveTags();renderTags();}},
@@ -984,8 +1042,9 @@ html body table.wsp-grid td > div.wsp-group-badge::after {content:none!important
       unlock:()=>{last=snapshot();remember();locks.clear();seats=seats.map(s=>({...s,emptyLocked:false}));paint();status('Oppilaiden ja tyhjien paikkojen lukitukset poistettu.');},
       exportLayouts:()=>exportJSON(false),exportAll:()=>{if(confirm('Vienti sisältää tallennettujen ryhmien opiskelijatietoja, kuten nimiä ja tunnisteita. Jatketaanko?'))exportJSON(true);},import:()=>$('file').click()
     };
-    panel.querySelectorAll('button').forEach(button=>button.type='button');
-    panel.addEventListener('click',event=>{
+    shell.querySelectorAll('#wsp-panel button,.wsp-board-actions button').forEach(button=>button.type='button');
+    shell.addEventListener('click',event=>{
+      if(!panel.contains(event.target)&&!boardTools.contains(event.target))return;
       const tab=event.target.closest('[data-tab]');if(tab){for(const button of panel.querySelectorAll('[data-tab]'))button.setAttribute('aria-selected',String(button===tab));for(const pane of panel.querySelectorAll('[data-pane]'))pane.hidden=pane.dataset.pane!==tab.dataset.tab;return;}
       const button=event.target.closest('button[data-action]');if(!button)return;event.preventDefault();run(actions[button.dataset.action]);
     });
