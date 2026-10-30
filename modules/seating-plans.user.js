@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Wilma Seating Plans — standalone beta
 // @namespace    arviointiapina.seating
-// @version      1.4.0
+// @version      1.4.1
 // @description  Pöytäjärjestykset, oppilasjärjestykset, arvonta ja ryhmät. Wilman tallennus pysyy erillisenä.
 // @match        https://espoo.inschool.fi/groups/*/seating*
 // @grant        GM_getValue
@@ -1008,7 +1008,14 @@ html body table.wsp-grid td > div.wsp-group-badge::after {content:none!important
     function rename(kind){const entry=chosen(kind);if(entry.builtin)throw Error('Tallenna valmis pohja ensin uutena.');const name=prompt('Uusi nimi:',entry.name);if(name===null)return;if(!validName(name))throw Error('Anna nimi (1–100 merkkiä).');const next=clone(db);next[kind].find(item=>item.id===entry.id).name=name.trim();saveDB(next);refresh();}
     function remove(kind){const entry=chosen(kind);if(entry.builtin)throw Error('Valmista pohjaa ei voi poistaa.');if(!confirm(`Poistetaanko tallenne ”${entry.name}”?`))return;const next=clone(db);next[kind]=next[kind].filter(item=>item.id!==entry.id);saveDB(next);refresh();}
     function exportJSON(all){const data={version:1,layouts:clone(db.layouts),arrangements:all?clone(db.arrangements):[]},url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=all?'wilma-seating-all.json':'wilma-desk-layouts.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-    function editorConfig(){return {groups:Number($('editorGroups').value),across:Number($('editorAcross').value),rows:Number($('editorRows').value),cols:Number($('editorCols').value),total:Number($('editorTotal').value)};}
+    function syncEditorMinimum(commit=false){
+      const input=$('editorTotal'),minimum=Math.max(1,cards.length);input.min=String(minimum);
+      const value=Number(input.value);
+      if((commit||document.activeElement!==input)&&(!Number.isInteger(value)||value<minimum))input.value=String(minimum);
+      return minimum;
+    }
+    function editorConfig(){const minimum=syncEditorMinimum();return {groups:Number($('editorGroups').value),across:Number($('editorAcross').value),rows:Number($('editorRows').value),cols:Number($('editorCols').value),total:Math.max(minimum,Number($('editorTotal').value))};}
+
     let editorRenderKey='';
     function updateEditor(){
       const key=JSON.stringify([editorConfig(),cards.length]);if(key===editorRenderKey)return;editorRenderKey=key;
@@ -1025,6 +1032,7 @@ html body table.wsp-grid td > div.wsp-group-badge::after {content:none!important
     }
     try{const config=JSON.parse(GM_getValue(`${KEY}:editor`,'null'));if(config)for(const [key,role] of [['groups','editorGroups'],['across','editorAcross'],['rows','editorRows'],['cols','editorCols'],['total','editorTotal']])if(Number.isInteger(config[key]))$(role).value=String(config[key]);}catch{}
     for(const role of ['editorGroups','editorAcross','editorRows','editorCols','editorTotal'])$(role).addEventListener('input',()=>{updateEditor();if(role==='editorTotal')refresh();});
+    $('editorTotal').addEventListener('change',()=>{syncEditorMinimum(true);updateEditor();refresh();});
     function saveEditor(){
       const entry=makeEditorLayout(editorConfig()),name=$('editorName').value.trim()||entry.name;
       if(!validName(name))throw Error('Anna pohjalle nimi (1–100 merkkiä).');
